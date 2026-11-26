@@ -110,7 +110,7 @@ function Main({ profile, onProfileSaved }: { profile: Profile; onProfileSaved: (
 
   return (
     <>
-      {tab === "schedule" && <Schedule onChanged={bump} balance={chip} />}
+      {tab === "schedule" && <Schedule onChanged={bump} balance={chip} name={profile.full_name} />}
       {tab === "mine" && <MyClasses refreshKey={refreshKey} onChanged={bump} balance={chip} />}
       {tab === "card" && <MyCard profile={profile} refreshKey={refreshKey} onProfileSaved={onProfileSaved} onChanged={bump} />}
       <nav className="tabbar" aria-label="ניווט ראשי">
@@ -182,15 +182,17 @@ function AdminMain({ profile }: { profile: Profile }) {
   );
 }
 
-const shortDate = new Intl.DateTimeFormat("he-IL", { day: "numeric", month: "numeric", timeZone: "UTC" });
-
 /** שורת יתרה קטנה בראש המסך. לחיצה פותחת את הכרטיסייה. */
 function BalanceChip({ balance, onOpen }: { balance: Balance; onOpen: () => void }) {
   const empty = balance.entries === 0;
   return (
     <button type="button" className={`balance-chip${empty ? " is-empty" : ""}`} onClick={onOpen}>
+      {balance.entries !== null && balance.entries > 0 && (
+        <span className="balance-mats" aria-hidden="true">
+          {Array.from({ length: Math.min(balance.entries, 10) }, (_, i) => <span key={i} />)}
+        </span>
+      )}
       <span className="balance-n">{balanceText(balance)}</span>
-      {balance.validUntil && <span className="balance-until">עד {shortDate.format(new Date(`${balance.validUntil}T12:00:00Z`))}</span>}
       <span className="visually-hidden">. מעבר לכרטיסייה</span>
     </button>
   );

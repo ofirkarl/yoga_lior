@@ -1,11 +1,11 @@
 /* עיצוב משותף לדפים הסטטיים (דף הבית ומדיניות הפרטיות). אותם צבעים כמו באפליקציה. */
 :root {
-  --bg: #ebe8e1;
-  --surface: #faf9f6;
-  --ink: #1c2422;
-  --muted: #55605b;
+  --bg: #f4efe9;
+  --surface: #fffdfa;
+  --ink: #26201c;
+  --muted: #6b6158;
   --line: #d3d0c8;
-  --primary: #1d4a4f;
+  --primary: #26201c;
   --accent: #8a5a0b;
 }
 * { box-sizing: border-box; }
