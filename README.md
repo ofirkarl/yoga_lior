@@ -68,11 +68,11 @@ npx serve dev/preview   # ואז לפתוח /?s=login, ?s=password, ?s=pending, 
 
 ## הקמה ב-Supabase
 
-1. ליצור פרויקט חדש, באזור הקרוב לישראל (למשל Frankfurt).
-2. להריץ את `supabase/migrations/0001_init.sql` ואחריו את `supabase/seed.sql`.
+1. הפרויקט: `Yoga_Lior_EU` (`bkfccrwkhookobbvrabo`), באזור Frankfurt.
+2. הסכמה (`0001`, `0002`) ונתוני הפתיחה כבר הותקנו בפרויקט. בפרויקט חדש: להריץ את הקבצים ב-`supabase/migrations` לפי הסדר, ואחריהם את `supabase/seed.sql`.
 3. Authentication → Providers: להפעיל Google ו-Email. לכבות הרשמה עצמית עם אימייל וסיסמה, כדי שחשבונות סיסמה ייווצרו רק על ידי ליאור.
 4. לפרוס את הפונקציה: `supabase functions deploy admin-users`, ולהגדיר `APP_ORIGIN` לכתובת האפליקציה.
-5. Google Cloud → OAuth consent screen: שם האפליקציה "יוגה עם ליאור", ולהגיש לאימות. בלי זה מסך הכניסה של גוגל מציג את הכתובת `tpzrxbfumfyiiptxxxxw.supabase.co` במקום את שם הסטודיו.
+5. Google Cloud → OAuth consent screen: שם האפליקציה "יוגה עם ליאור", ולהגיש לאימות. בלי זה מסך הכניסה של גוגל מציג את הכתובת `bkfccrwkhookobbvrabo.supabase.co` במקום את שם הסטודיו.
 6. אחרי שליאור נכנסת בפעם הראשונה עם גוגל, להפוך אותה למנהלת ב-SQL Editor:
    `update profiles set role = 'admin', status = 'active' where email = '<האימייל של ליאור>';`
 
