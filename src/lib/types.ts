@@ -75,3 +75,78 @@ export interface HealthAnswers {
   anything_else: string;
   declaration_accepted: boolean;
 }
+
+/* ---------- ניהול ---------- */
+export type PaymentMethod = "grow" | "cash" | "paybox" | "bit" | "transfer" | "other";
+
+export interface Product {
+  id: string;
+  name: string;
+  kind: "trial" | "single" | "punch" | "membership";
+  mode: AttendMode;
+  price_ils: number;
+  entries: number | null;
+  validity_days: number;
+  active: boolean;
+}
+
+export interface DashboardSession {
+  session_id: string;
+  title: string;
+  starts_at: string;
+  status: "scheduled" | "cancelled";
+  cancel_deadline: string;
+  min: number;
+  max: number;
+  studio: number;
+  zoom: number;
+  waitlist: number;
+}
+
+export type ActivityItem =
+  | { kind: "booked" | "waitlist"; at: string; who: string; what: string; when: string; mode: AttendMode }
+  | { kind: "cancelled" | "late_cancel"; at: string; who: string; what: string; when: string }
+  | { kind: "payment"; at: string; who: string; what: string; amount: number; method: PaymentMethod }
+  | { kind: "joined"; at: string; who: string };
+
+export interface Dashboard {
+  generated_at: string;
+  kpis: {
+    active_members: number;
+    pending_members: number;
+    active_cards: number;
+    revenue_month: number;
+    visits_month: number;
+    classes_week: number;
+  };
+  revenue_months: { month: string; total: number }[];
+  revenue_by_method: { method: PaymentMethod; total: number }[];
+  upcoming: DashboardSession[];
+  pending: { id: string; full_name: string; email: string | null; phone: string | null; created_at: string; has_health: boolean }[];
+  expiring: { entitlement_id: string; user_id: string; full_name: string; phone: string | null; title: string; entries_left: number | null; valid_until: string }[];
+  activity: ActivityItem[];
+}
+
+export interface Member extends Profile {
+  created_at: string;
+  entitlements: Entitlement[];
+}
+
+export interface AdminSession {
+  id: string;
+  title: string;
+  starts_at: string;
+  duration_min: number;
+  status: "scheduled" | "cancelled";
+  cancel_reason: string | null;
+  min_participants: number;
+  max_participants: number;
+  cancel_deadline: string;
+  bookings: {
+    id: string;
+    status: BookingStatus;
+    mode: AttendMode;
+    created_at: string;
+    profile: { id: string; full_name: string; phone: string | null };
+  }[];
+}

@@ -36,3 +36,30 @@ export function missingText(missing: number): string {
     ? "חסרה עוד נרשמת אחת כדי שהשיעור יתקיים"
     : `חסרות עוד ${missing} נרשמות כדי שהשיעור יתקיים`;
 }
+
+const money = new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 });
+export const formatMoney = (n: number) => money.format(n);
+
+const monthFmt = new Intl.DateTimeFormat("he-IL", { month: "short" });
+export const formatMonth = (yyyyMm: string) => monthFmt.format(new Date(`${yyyyMm}-15T12:00:00Z`));
+
+/** "לפני 5 דקות", "אתמול" — לפיד הפעילות */
+export function timeAgo(iso: string): string {
+  const diff = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (diff < 1) return "עכשיו";
+  if (diff < 60) return diff === 1 ? "לפני דקה" : `לפני ${diff} דקות`;
+  const h = Math.round(diff / 60);
+  if (h < 24) return h === 1 ? "לפני שעה" : h === 2 ? "לפני שעתיים" : `לפני ${h} שעות`;
+  const d = Math.round(h / 24);
+  if (d === 1) return "אתמול";
+  if (d < 7) return `לפני ${d} ימים`;
+  return formatDate(iso);
+}
+
+export const METHOD_LABEL: Record<string, string> = {
+  grow: "Grow", cash: "מזומן", paybox: "פייבוקס", bit: "ביט", transfer: "העברה", other: "אחר",
+};
+
+/** "א׳ 18:30" — יום ושעה קצרים */
+const shortWeekday = new Intl.DateTimeFormat("he-IL", { timeZone: "Asia/Jerusalem", weekday: "short" });
+export const formatShortWhen = (iso: string) => `${shortWeekday.format(new Date(iso))} ${formatTime(iso)}`;

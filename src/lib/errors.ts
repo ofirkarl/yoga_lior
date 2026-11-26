@@ -13,6 +13,16 @@ const MESSAGES: Record<string, string> = {
   weak_password: "הסיסמה צריכה להיות באורך 8 תווים לפחות.",
   same_password: "הסיסמה החדשה צריכה להיות שונה מהזמנית.",
   network: "אין חיבור כרגע. כדאי לבדוק את האינטרנט ולנסות שוב.",
+  admin_only: "הפעולה הזו פתוחה רק לליאור.",
+  product_once_per_user: "שיעור ניסיון אפשר לקבל פעם אחת בלבד, והמתאמנת כבר קיבלה.",
+  reason_required: "צריך לכתוב בקצרה למה מתקנים, כדי שיישאר תיעוד.",
+  username_taken: "שם המשתמש הזה כבר תפוס. אפשר להוסיף אות או ספרה.",
+  bad_username: "שם משתמש: 3–30 אותיות באנגלית, ספרות, נקודה או מקף.",
+  bad_name: "צריך שם מלא, לפחות 2 אותיות.",
+  bad_phone: "מספר הטלפון לא נראה שלם.",
+  not_username_account: "למשתמשת הזו אין סיסמה אצלנו. היא נכנסת עם גוגל.",
+  function_unavailable: "יצירת משתמשות עם שם משתמש עוד לא הופעלה בשרת. אופיר יפעיל אותה כשהאפליקציה תעלה לאוויר.",
+  booking_not_found: "ההרשמה הזו כבר לא פעילה.",
 };
 
 export const GENERIC_ERROR = "משהו השתבש. אפשר לנסות שוב בעוד רגע.";
@@ -25,6 +35,7 @@ export function errorCode(err: unknown): string | null {
       : err && typeof err === "object" && "message" in err
         ? String((err as { message: unknown }).message)
         : "";
+  if (/Failed to send a request|FunctionsFetchError|FunctionsRelayError/i.test(text)) return "function_unavailable";
   if (/Failed to fetch|NetworkError|network/i.test(text)) return "network";
   if (/Invalid login credentials/i.test(text)) return "invalid_login";
   if (/should be different/i.test(text)) return "same_password";

@@ -1,6 +1,6 @@
 // גרסת הדגמה של שכבת הנתונים, לתצוגה מקדימה ובדיקות בלי Supabase.
 // בוחרים מצב בכתובת: ?s=login | password | pending | health | main
-import type { AttendMode, Entitlement, HealthAnswers, MyBooking, Profile, ScheduleItem } from "../src/lib/types";
+import type { AdminSession, AttendMode, Dashboard, Entitlement, HealthAnswers, Member, MyBooking, Product, Profile, ScheduleItem } from "../src/lib/types";
 
 export type Session = { user: { id: string } };
 
@@ -13,11 +13,11 @@ const emit = () => listeners.forEach((l) => l(session));
 
 const profile: Profile = {
   id: "u1",
-  full_name: "דנה כהן",
+  full_name: scenario === "admin" ? "ליאור הררי" : "דנה כהן",
   phone: "0501234567",
   email: "dana@example.com",
   username: null,
-  role: "trainee",
+  role: scenario === "admin" ? "admin" : "trainee",
   status: scenario === "pending" ? "pending" : "active",
   must_change_password: scenario === "password",
 };
@@ -126,5 +126,87 @@ export const api = {
     }));
   },
   async getZoomLink() { return "https://zoom.us/j/000"; },
+
+  /* ---------- ניהול ---------- */
+  async getDashboard(): Promise<Dashboard> {
+    await wait();
+    const ago = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
+    const up = sessions.filter((x) => new Date(x.starts_at).getTime() < Date.now() + 7 * DAY);
+    return {
+      generated_at: new Date().toISOString(),
+      kpis: { active_members: 15, pending_members: members.filter((m) => m.status === "pending").length, active_cards: 13,
+              revenue_month: 4865, visits_month: 61, classes_week: up.length },
+      revenue_months: [["2026-06", 3150], ["2026-07", 2800], ["2026-08", 1950], ["2026-09", 3900], ["2026-10", 5200], ["2026-11", 4865]]
+        .map(([month, total]) => ({ month: month as string, total: total as number })),
+      revenue_by_method: [{ method: "grow", total: 2850 }, { method: "paybox", total: 1300 }, { method: "cash", total: 715 }],
+      upcoming: up.map((x) => ({ session_id: x.session_id, title: x.title, starts_at: x.starts_at, status: x.status,
+        cancel_deadline: x.cancel_deadline, min: x.min_participants, max: x.max_participants,
+        studio: x.booked_studio, zoom: x.booked_zoom, waitlist: x.waitlist_count })),
+      pending: members.filter((m) => m.status === "pending").map((m) => ({ id: m.id, full_name: m.full_name, email: m.email,
+        phone: m.phone, created_at: m.created_at, has_health: true })),
+      expiring: [
+        { entitlement_id: "x1", user_id: "m1", full_name: "דנה כהן", phone: "0501234567", title: "כרטיסייה 10 כניסות – 6 שבועות", entries_left: 3, valid_until: new Date(Date.now() + 5 * DAY).toISOString().slice(0, 10) },
+        { entitlement_id: "x2", user_id: "m2", full_name: "מיכל לוי", phone: "0527654321", title: "כרטיסייה 5 כניסות – 12 שבועות", entries_left: 1, valid_until: new Date(Date.now() + 30 * DAY).toISOString().slice(0, 10) },
+      ],
+      activity: [
+        { kind: "booked", at: ago(4), who: "רונית אברהם", what: "רמה 1", when: sessions[1]?.starts_at ?? ago(0), mode: "studio" },
+        { kind: "payment", at: ago(38), who: "מיכל לוי", what: "כרטיסייה 5 כניסות – 12 שבועות", amount: 425, method: "grow" },
+        { kind: "cancelled", at: ago(95), who: "שירה גולן", what: "מתחילים", when: sessions[2]?.starts_at ?? ago(0) },
+        { kind: "joined", at: ago(180), who: "נועה פרץ" },
+        { kind: "late_cancel", at: ago(60 * 26), who: "יעל מזרחי", what: "תרגול רך", when: ago(60 * 20) },
+        { kind: "waitlist", at: ago(60 * 30), who: "דנה כהן", what: "רמה 2", when: sessions[3]?.starts_at ?? ago(0), mode: "studio" },
+      ],
+    };
+  },
+  async listMembers(): Promise<Member[]> { await wait(); return members.map((m) => ({ ...m })); },
+  async setMemberStatus(id: string, st: "pending" | "active" | "blocked") { await wait(); const m = members.find((x) => x.id === id); if (m) m.status = st; },
+  async listProducts(): Promise<Product[]> { return products; },
+  async recordPayment(_p: unknown) { await wait(); },
+  async adjustEntitlement() { await wait(); },
+  async getHealthDeclaration() {
+    return { signed_at: "2026-10-12T09:00:00Z", answers: { first_name: "דנה", last_name: "כהן", birth_date: "1988-04-02", phone: "0501234567",
+      email: "dana@example.com", practiced_before: "yes" as const, practice_details: "ויניאסה, שנתיים", back_joint_pain: "כאבים קלים בגב התחתון",
+      health_issue: "לא", regular_medication: "לא", surgery: "לא", menstrual_irregularity: "", gynecological_issue: "", anything_else: "", declaration_accepted: true } };
+  },
+  async getAdminSessions(): Promise<AdminSession[]> {
+    await wait();
+    const names = ["דנה כהן", "מיכל לוי", "רונית אברהם", "שירה גולן", "יעל מזרחי", "נועה פרץ", "תמר שלו", "אורית בן דוד", "הילה כץ"];
+    const past: ScheduleItem = { ...sessions[0], session_id: "past", title: "רמה 2", starts_at: new Date(Date.now() - DAY).toISOString(), booked_studio: 4, booked_zoom: 0, my_status: null };
+    return [past, ...sessions.slice(0, 8)].map((x, i) => ({
+      id: x.session_id, title: x.title, starts_at: x.starts_at, duration_min: 75, status: x.status, cancel_reason: x.status === "cancelled" ? "ליאור בחופש" : null,
+      min_participants: 3, max_participants: 8, cancel_deadline: x.cancel_deadline,
+      bookings: Array.from({ length: x.booked_studio + x.booked_zoom + x.waitlist_count }, (_, j) => ({
+        id: `${x.session_id}-${j}`, created_at: new Date(Date.now() - j * 3600_000).toISOString(),
+        status: (j >= x.booked_studio + x.booked_zoom ? "waitlist" : i === 0 && j === 1 ? "attended" : "booked") as "booked",
+        mode: (j >= x.booked_studio && j < x.booked_studio + x.booked_zoom ? "zoom" : "studio") as AttendMode,
+        profile: { id: `m${j}`, full_name: names[j % names.length], phone: null },
+      })),
+    }));
+  },
+  async cancelSession() { await wait(); return 3; },
+  async markAttendance() { await wait(); },
+  async generateSessions() { await wait(); return 0; },
+  async createUsernameUser(p: { username: string }) { await wait(); return { username: p.username, temp_password: "Kp7rQx9mTa3w" }; },
+  async resetPassword() { await wait(); return { temp_password: "Hm4tNb8vYc2s" }; },
 };
+
+const products: Product[] = [
+  { id: "p1", name: "שיעור ניסיון", kind: "trial", mode: "studio", price_ils: 60, entries: 1, validity_days: 7, active: true },
+  { id: "p2", name: "שיעור בודד", kind: "single", mode: "studio", price_ils: 90, entries: 1, validity_days: 7, active: true },
+  { id: "p3", name: "כרטיסייה 5 כניסות – 6 שבועות", kind: "punch", mode: "studio", price_ils: 375, entries: 5, validity_days: 42, active: true },
+  { id: "p5", name: "כרטיסייה 10 כניסות – 6 שבועות", kind: "punch", mode: "studio", price_ils: 650, entries: 10, validity_days: 42, active: true },
+];
+
+const mk = (id: string, full_name: string, status: "pending" | "active", cards: Entitlement[] = []): Member => ({
+  id, full_name, status, phone: "050-0000000", email: `${id}@example.com`, username: null, role: "trainee",
+  must_change_password: false, created_at: new Date(Date.now() - 3 * DAY).toISOString(), entitlements: cards,
+});
+const card = (left: number, days: number): Entitlement => ({ id: `c${left}${days}`, title: "כרטיסייה 10 כניסות – 6 שבועות", mode: "studio",
+  entries_total: 10, entries_left: left, valid_from: "2026-11-01", valid_until: new Date(Date.now() + days * DAY).toISOString().slice(0, 10), status: "active" });
+const members: Member[] = [
+  mk("m7", "נועה פרץ", "pending"), mk("m8", "קרן אלון", "pending"),
+  mk("m1", "דנה כהן", "active", [card(3, 5)]), mk("m2", "מיכל לוי", "active", [card(1, 30)]),
+  mk("m3", "רונית אברהם", "active", [card(7, 25)]), mk("m4", "שירה גולן", "active", []),
+];
 export type Api = typeof api;
+

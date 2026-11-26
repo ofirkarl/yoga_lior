@@ -1,7 +1,9 @@
 // שכבת הנתונים. כל פנייה ל-Supabase עוברת מכאן, כדי שהמסכים לא יכירו את פרטי השרת.
 // ההרשאות נאכפות בבסיס הנתונים (RLS ופונקציות), לא כאן.
 import { createClient, type Session } from "@supabase/supabase-js";
-import type { AttendMode, Entitlement, HealthAnswers, MyBooking, Profile, ScheduleItem } from "./types";
+import type {
+  AdminSession, AttendMode, Dashboard, Entitlement, HealthAnswers, Member, MyBooking, PaymentMethod, Product, Profile, ScheduleItem, UserStatus,
+} from "./types";
 
 const url = import.meta.env.VITE_SUPABASE_URL as string;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -124,6 +126,102 @@ export const api = {
     ) as { zoom_url: string | null } | null;
     return row?.zoom_url ?? null;
   },
+
+  /* ---------- ניהול (כל פעולה נבדקת שוב בבסיס הנתונים) ---------- */
+
+  async getDashboard(): Promise<Dashboard> {
+    return must(await supabase.rpc("admin_dashboard")) as Dashboard;
+  },
+
+  async listMembers(): Promise<Member[]> {
+    return must(
+      await supabase
+        .from("profiles")
+        .select("id, full_name, phone, email, username, role, status, must_change_password, created_at, entitlements(id, title, mode, entries_total, entries_left, valid_from, valid_until, status)")
+        .eq("role", "trainee")
+        .order("full_name"),
+    ) as Member[];
+  },
+
+  async setMemberStatus(userId: string, status: UserStatus): Promise<void> {
+    must(await supabase.rpc("admin_set_member_status", { p_user: userId, p_status: status }));
+  },
+
+  async listProducts(): Promise<Product[]> {
+    return must(
+      await supabase.from("products").select("id, name, kind, mode, price_ils, entries, validity_days, active").eq("active", true).order("sort_order"),
+    ) as Product[];
+  },
+
+  async recordPayment(p: { userId: string; productId: string; method: PaymentMethod; amount: number; note?: string }): Promise<void> {
+    must(
+      await supabase.rpc("admin_record_payment", {
+        p_user: p.userId, p_product: p.productId, p_method: p.method, p_amount: p.amount, p_note: p.note ?? null,
+      }),
+    );
+  },
+
+  async adjustEntitlement(entId: string, entriesAdd: number, validUntil: string | null, reason: string): Promise<void> {
+    must(
+      await supabase.rpc("admin_adjust_entitlement", {
+        p_ent: entId, p_entries_add: entriesAdd, p_valid_until: validUntil, p_reason: reason,
+      }),
+    );
+  },
+
+  async getHealthDeclaration(userId: string): Promise<{ answers: HealthAnswers; signed_at: string } | null> {
+    return must(
+      await supabase.from("health_declarations").select("answers, signed_at").eq("user_id", userId)
+        .order("signed_at", { ascending: false }).limit(1).maybeSingle(),
+    ) as { answers: HealthAnswers; signed_at: string } | null;
+  },
+
+  async getAdminSessions(from: Date, to: Date): Promise<AdminSession[]> {
+    return must(
+      await supabase
+        .from("class_sessions")
+        .select("id, title, starts_at, duration_min, status, cancel_reason, min_participants, max_participants, cancel_deadline, bookings(id, status, mode, created_at, profile:profiles(id, full_name, phone))")
+        .gte("starts_at", from.toISOString())
+        .lt("starts_at", to.toISOString())
+        .order("starts_at"),
+    ) as unknown as AdminSession[];
+  },
+
+  async cancelSession(sessionId: string, reason: string): Promise<number> {
+    return must(await supabase.rpc("admin_cancel_session", { p_session: sessionId, p_reason: reason })) as number;
+  },
+
+  async markAttendance(bookingId: string, attended: boolean): Promise<void> {
+    must(await supabase.rpc("admin_mark_attendance", { p_booking: bookingId, p_attended: attended }));
+  },
+
+  async generateSessions(from: string, to: string): Promise<number> {
+    return must(await supabase.rpc("admin_generate_sessions", { p_from: from, p_to: to })) as number;
+  },
+
+  async createUsernameUser(p: { username: string; full_name: string; phone: string }): Promise<{ username: string; temp_password: string }> {
+    const { data, error } = await supabase.functions.invoke("admin-users", { body: { action: "create", ...p } });
+    if (error) throw await functionError(error);
+    return data as { username: string; temp_password: string };
+  },
+
+  async resetPassword(userId: string): Promise<{ temp_password: string }> {
+    const { data, error } = await supabase.functions.invoke("admin-users", { body: { action: "reset_password", user_id: userId } });
+    if (error) throw await functionError(error);
+    return data as { temp_password: string };
+  },
 };
+
+/** מחלץ את קוד השגיאה שהפונקציה בשרת החזירה */
+async function functionError(error: unknown): Promise<Error> {
+  try {
+    const ctx = (error as { context?: Response }).context;
+    const body = ctx ? await ctx.json() : null;
+    if (body?.error) return new Error(body.error);
+  } catch {
+    /* ignore */
+  }
+  return error instanceof Error ? error : new Error(String(error));
+}
 
 export type Api = typeof api;

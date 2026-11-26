@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ReactElement } from "react";
 import { api, type Session } from "./lib/api";
 import { errorMessage } from "./lib/errors";
 import type { Profile } from "./lib/types";
-import { CalendarIcon, ListIcon, Loading, TicketIcon, ToastProvider } from "./components/ui";
+import { CalendarIcon, GaugeIcon, ListIcon, Loading, PeopleIcon, TicketIcon, ToastProvider } from "./components/ui";
 import { Login } from "./screens/Login";
 import { ChangePassword } from "./screens/ChangePassword";
 import { Pending } from "./screens/Pending";
@@ -10,6 +10,9 @@ import { HealthForm } from "./screens/HealthForm";
 import { Schedule } from "./screens/Schedule";
 import { MyClasses } from "./screens/MyClasses";
 import { MyCard } from "./screens/MyCard";
+import { ControlRoom, type AdminTab } from "./admin/ControlRoom";
+import { Members } from "./admin/Members";
+import { Classes } from "./admin/Classes";
 
 type Tab = "schedule" | "mine" | "card";
 const TABS: { id: Tab; label: string; Icon: () => ReactElement }[] = [
@@ -69,6 +72,7 @@ function Gate() {
     );
   if (!profile || hasHealth === null) return <Loading />;
   if (profile.must_change_password) return <ChangePassword onDone={loadProfile} />;
+  if (profile.role === "admin" && profile.status === "active") return <AdminMain profile={profile} />;
   if (showHealth || (profile.status === "active" && !hasHealth))
     return <HealthForm profile={profile} onDone={() => { setShowHealth(false); loadProfile(); }} />;
   if (profile.status !== "active") return <Pending profile={profile} hasHealth={hasHealth} onFillHealth={() => setShowHealth(true)} />;
@@ -93,6 +97,42 @@ function Main({ profile, onProfileSaved }: { profile: Profile; onProfileSaved: (
       <nav className="tabbar" aria-label="ניווט ראשי">
         <ul>
           {TABS.map(({ id, label, Icon }) => (
+            <li key={id}>
+              <button type="button" aria-current={tab === id ? "page" : undefined} onClick={() => setTab(id)}>
+                <Icon />
+                {label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </>
+  );
+}
+
+const ADMIN_TABS: { id: AdminTab; label: string; Icon: () => ReactElement }[] = [
+  { id: "room", label: "חדר בקרה", Icon: GaugeIcon },
+  { id: "members", label: "מתאמנות", Icon: PeopleIcon },
+  { id: "classes", label: "שיעורים", Icon: CalendarIcon },
+];
+
+function AdminMain({ profile }: { profile: Profile }) {
+  const [tab, setTab] = useState<AdminTab>("room");
+
+  useEffect(() => {
+    const t = ADMIN_TABS.find((x) => x.id === tab)!;
+    document.title = `${t.label} · יוגה עם ליאור`;
+    window.scrollTo(0, 0);
+  }, [tab]);
+
+  return (
+    <>
+      {tab === "room" && <ControlRoom name={profile.full_name} go={setTab} />}
+      {tab === "members" && <Members />}
+      {tab === "classes" && <Classes />}
+      <nav className="tabbar" aria-label="ניווט ניהול">
+        <ul>
+          {ADMIN_TABS.map(({ id, label, Icon }) => (
             <li key={id}>
               <button type="button" aria-current={tab === id ? "page" : undefined} onClick={() => setTab(id)}>
                 <Icon />

@@ -218,4 +218,37 @@ select t.as_user('00000000-0000-0000-0000-0000000000d1');
 select t.fails('select admin_generate_sessions(current_date, current_date + 6)', 'admin_only', 'מתאמנת לא יכולה ליצור שיעורים');
 reset role;
 
+-- ===== חדר בקרה =====
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-00000000000a');
+select t.ok((admin_dashboard() -> 'kpis' ->> 'active_members')::int = 2, 'חדר בקרה: 2 מתאמנות פעילות');
+select t.ok((admin_dashboard() -> 'kpis' ->> 'revenue_month')::numeric = 950, 'חדר בקרה: הכנסות החודש');
+select t.ok(jsonb_array_length(admin_dashboard() -> 'revenue_months') = 6, 'חדר בקרה: הכנסות של 6 חודשים');
+select t.ok(jsonb_array_length(admin_dashboard() -> 'activity') > 0, 'חדר בקרה: יש פעילות אחרונה');
+reset role;
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-0000000000d1');
+select t.fails('select admin_dashboard()', 'admin_only', 'מתאמנת לא רואה את חדר הבקרה');
+select t.fails('select * from admin_allowlist', 'permission denied', 'מתאמנת לא רואה את רשימת המנהלות');
+select t.fails('select generate_sessions_internal(current_date, current_date)', 'permission denied', 'יצירת שיעורים פנימית חסומה');
+reset role;
+
+-- ===== מנהלת אוטומטית בכניסה ראשונה =====
+insert into admin_allowlist (email) values ('lior.real@gmail.com');
+insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data, email_confirmed_at) values
+  ('00000000-0000-0000-0000-0000000000f1', 'Lior.Real@gmail.com', '{"full_name":"ליאור"}', '{"provider":"email"}', null);
+select t.ok((select role = 'trainee' and status = 'pending' from profiles where id = '00000000-0000-0000-0000-0000000000f1'),
+            'הרשמה עם סיסמה לכתובת של ליאור לא נותנת הרשאת מנהלת');
+delete from auth.users where id = '00000000-0000-0000-0000-0000000000f1';
+insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data, email_confirmed_at) values
+  ('00000000-0000-0000-0000-0000000000f2', 'Lior.Real@gmail.com', '{"full_name":"ליאור"}', '{"provider":"google"}', null);
+select t.ok((select role = 'trainee' from profiles where id = '00000000-0000-0000-0000-0000000000f2'), 'לפני אישור אימייל: עדיין לא מנהלת');
+update auth.users set email_confirmed_at = now() where id = '00000000-0000-0000-0000-0000000000f2';
+select t.ok((select role = 'admin' and status = 'active' from profiles where id = '00000000-0000-0000-0000-0000000000f2'),
+            'כניסה ראשונה עם גוגל: ליאור מנהלת מאושרת');
+insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data, email_confirmed_at) values
+  ('00000000-0000-0000-0000-0000000000f3', 'someone@gmail.com', '{}', '{"provider":"google"}', now());
+select t.ok((select role = 'trainee' and status = 'pending' from profiles where id = '00000000-0000-0000-0000-0000000000f3'),
+            'כניסה עם גוגל של מישהי אחרת: מתאמנת ממתינה');
+
 \echo 'כל הבדיקות עברו'
