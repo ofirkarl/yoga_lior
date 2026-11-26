@@ -280,6 +280,7 @@ function Seats({ it }: { it: ScheduleItem }) {
   const max = it.max_participants;
   const used = Math.min(taken(it), max);
   const left = max - used;
+  const mineSeat = it.my_status === "booked" && it.my_mode === "studio";
   const text = left > 0
     ? left === 1 ? "מקום אחד פנוי" : `${left} מקומות פנויים`
     : it.waitlist_count > 0 ? `מלא, ${it.waitlist_count} בהמתנה` : "מלא";
@@ -287,7 +288,9 @@ function Seats({ it }: { it: ScheduleItem }) {
     <div className="seats">
       {max <= 14 && (
         <span className="seat-row" aria-hidden="true">
-          {Array.from({ length: max }, (_, i) => <span key={i} className={`seat${i < used ? " is-taken" : ""}`} />)}
+          {Array.from({ length: max }, (_, i) => (
+            <span key={i} className={`seat${i < used ? " is-taken" : ""}${mineSeat && i === it.booked_studio - 1 ? " is-mine" : ""}`} />
+          ))}
         </span>
       )}
       <span className={`seat-text${left === 0 ? " is-full" : ""}`}>

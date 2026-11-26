@@ -9,6 +9,7 @@ import { Loading } from "../components/ui";
 import { PushCard } from "./PushCard";
 import { PendingOrders } from "./PendingOrders";
 import { BackupCard } from "./BackupCard";
+import { SystemStatus } from "./SystemStatus";
 
 export type AdminTab = "room" | "members" | "classes";
 
@@ -58,7 +59,7 @@ export function ControlRoom({ name, go }: { name: string; go: (t: AdminTab) => v
     <main id="main" className="page">
       <div className="page-header">
         <h1>{greeting()}{name ? `, ${name.split(" ")[0]}` : ""}</h1>
-        <p>חדר הבקרה של הסטודיו · מתעדכן כל דקה</p>
+        <p>חדר הבקרה של הסטודיו</p>
       </div>
 
       {/* דברים שדורשים תשומת לב */}
@@ -89,8 +90,6 @@ export function ControlRoom({ name, go }: { name: string; go: (t: AdminTab) => v
       )}
 
       <PendingOrders onChanged={load} />
-
-      <PushCard />
 
       {/* מספרים */}
       <section aria-labelledby="kpis">
@@ -166,6 +165,10 @@ export function ControlRoom({ name, go }: { name: string; go: (t: AdminTab) => v
           )}
         </div>
       </section>
+      <PushCard />
+
+      <SystemStatus />
+
       <BackupCard />
 
       <button type="button" className="btn btn--ghost btn--block" style={{ marginTop: "2rem" }} onClick={() => api.signOut()}>

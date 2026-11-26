@@ -137,6 +137,11 @@ export function MyCard({ profile, refreshKey, onProfileSaved, onChanged }: {
           <p className="quiet" style={{ margin: ".25rem 0 0" }}>
             {formatMoney(o.amount_ils)}. הכרטיסייה תיפתח כשליאור תאשר שהתשלום התקבל.
           </p>
+          <ol className="order-steps" aria-label="שלבי ההזמנה">
+            <li className="is-done">הוזמן</li>
+            <li className="is-now">ממתין לאישור תשלום</li>
+            <li>הכרטיסייה נפתחת</li>
+          </ol>
           <div className="slot-actions">
             {o.payment_url ? (
               <a className="btn btn--sm btn--primary" href={o.payment_url}>לתשלום</a>
@@ -213,6 +218,10 @@ export function MyCard({ profile, refreshKey, onProfileSaved, onChanged }: {
       <button type="button" className="btn btn--ghost btn--block" onClick={() => api.signOut()}>
         יציאה מהחשבון
       </button>
+
+      <p className="trust-note">
+        הפרטים נשמרים בשרתים באירופה, ורק ליאור רואה אותם. <a href="/privacy.html">מדיניות פרטיות</a>
+      </p>
 
       <Sheet open={!!choosing} onClose={() => !busy && setChoosing(null)} title="סיכום הזמנה">
         {choosing && (
