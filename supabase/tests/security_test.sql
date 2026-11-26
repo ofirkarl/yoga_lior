@@ -477,4 +477,26 @@ select t.fails($q$select accept_offer((select b.id from bookings b join class_se
                'offer_expired', 'מי שאיחרה: המקום כבר נתפס');
 reset role;
 
+-- זמן שמירת המקום כהגדרה
+reset role;
+update settings set offer_hold_minutes = 20;
+insert into class_sessions (title, starts_at, duration_min, min_participants, max_participants, zoom_enabled, cancel_deadline)
+values ('הגדרה', now() + interval '1 day', 60, 1, 1, false, now() + interval '20 hours');
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-0000000000a2');
+select book_class((select id from class_sessions where title = 'הגדרה'));
+select t.as_user('00000000-0000-0000-0000-0000000000c1');
+select book_class((select id from class_sessions where title = 'הגדרה'));
+select t.as_user('00000000-0000-0000-0000-0000000000a2');
+select cancel_booking((select b.id from bookings b join class_sessions s on s.id = b.session_id where s.title = 'הגדרה' and b.user_id = auth.uid()));
+select t.as_user('00000000-0000-0000-0000-0000000000c1');
+select t.ok((select my_offer_expires_at between now() + interval '19 minutes' and now() + interval '21 minutes'
+             from get_schedule_v2(now(), now() + interval '2 days') where title = 'הגדרה'), 'זמן השמירה לפי ההגדרה של ליאור');
+update settings set offer_hold_minutes = 200;
+select t.ok((select offer_hold_minutes from settings) = 20, 'מתאמנת לא משנה הגדרות');
+select t.as_user('00000000-0000-0000-0000-00000000000a');
+update settings set offer_hold_minutes = 30;
+select t.ok((select offer_hold_minutes from settings) = 30, 'ליאור משנה את זמן השמירה');
+reset role;
+
 \echo 'כל הבדיקות עברו'

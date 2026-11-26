@@ -4,6 +4,7 @@ import { errorMessage } from "../lib/errors";
 import { dayKey, formatDay, formatDeadline, formatTime } from "../lib/format";
 import type { AdminSession } from "../lib/types";
 import { Field, Loading, Sheet, useAsk, useToast } from "../components/ui";
+import { WaitlistSettings } from "./WaitlistSettings";
 
 const ACTIVE = ["booked", "attended", "no_show"];
 const STATUS_LABEL: Record<string, string> = {
@@ -177,6 +178,7 @@ export function Classes() {
           </div>
         )}
       </Sheet>
+      <WaitlistSettings />
     </main>
   );
 }

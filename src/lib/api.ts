@@ -100,6 +100,20 @@ export const api = {
     return rows[0];
   },
 
+  async getWaitlistTiming(): Promise<{ hold: number; open: number }> {
+    const row = must(await supabase.from("settings").select("offer_hold_minutes, offer_open_minutes").single()) as {
+      offer_hold_minutes: number; offer_open_minutes: number;
+    };
+    return { hold: row.offer_hold_minutes, open: row.offer_open_minutes };
+  },
+
+  async setWaitlistTiming(hold: number, open: number): Promise<void> {
+    const rows = must(
+      await supabase.from("settings").update({ offer_hold_minutes: hold, offer_open_minutes: open }).eq("id", true).select("id"),
+    ) as unknown[];
+    if (!rows.length) throw new Error("admin_only");
+  },
+
   async acceptOffer(bookingId: string): Promise<void> {
     must(await supabase.rpc("accept_offer", { p_booking: bookingId }));
   },

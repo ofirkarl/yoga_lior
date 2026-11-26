@@ -128,6 +128,8 @@ export const api = {
     s.my_booking_id = null; s.my_status = null; s.my_mode = null;
     return { new_status: "cancelled", refunded };
   },
+  async getWaitlistTiming() { await wait(); return { hold: 60, open: 30 }; },
+  async setWaitlistTiming() { await wait(); },
   async acceptOffer(bid: string) {
     await wait();
     const s = sessions.find((x) => x.my_booking_id === bid)!;
