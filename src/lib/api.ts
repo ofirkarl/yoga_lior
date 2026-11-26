@@ -226,6 +226,23 @@ export const api = {
     must(await supabase.rpc("admin_delete_balance", { p_balance: balanceId }));
   },
 
+  async savePushSubscription(endpoint: string, p256dh: string, auth: string, userAgent: string): Promise<void> {
+    must(await supabase.rpc("save_push_subscription", {
+      p_endpoint: endpoint, p_p256dh: p256dh, p_auth: auth, p_user_agent: userAgent,
+    }));
+  },
+
+  async deletePushSubscription(endpoint: string): Promise<void> {
+    must(await supabase.rpc("delete_push_subscription", { p_endpoint: endpoint }));
+  },
+
+  /** שולחת התראת בדיקה למכשירים של המנהלת המחוברת */
+  async sendTestPush(): Promise<{ sent: number; devices?: number }> {
+    const { data, error } = await supabase.functions.invoke("notify-admins", { body: { event: "test" } });
+    if (error) throw await functionError(error);
+    return data as { sent: number; devices?: number };
+  },
+
   async resetPassword(userId: string): Promise<{ temp_password: string }> {
     const { data, error } = await supabase.functions.invoke("admin-users", { body: { action: "reset_password", user_id: userId } });
     if (error) throw await functionError(error);

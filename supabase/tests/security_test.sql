@@ -317,4 +317,45 @@ select t.fails('select admin_delete_balance((select id from imported_balances li
                'אי אפשר למחוק יתרה שכבר נקשרה');
 reset role;
 
+
+-- ---------------------------------------------------------------------
+-- התראות Push
+-- ---------------------------------------------------------------------
+reset role;
+delete from net.requests;
+-- הרשמה עם גוגל, אימייל מאומת: יוצאת התראה
+insert into auth.users (id, email, raw_app_meta_data, email_confirmed_at)
+values ('00000000-0000-0000-0000-0000000000c1', 'new1@example.com', '{"provider":"google"}', now());
+select t.ok((select count(*) from net.requests where body->>'event' = 'new_signup'
+             and body->>'user_id' = '00000000-0000-0000-0000-0000000000c1') = 1, 'הרשמה חדשה שולחת התראה');
+select t.ok((select headers->>'x-notify-secret' from net.requests limit 1)
+            = (select decrypted_secret from vault.decrypted_secrets where name = 'notify_secret'), 'הבקשה נושאת את הסוד');
+-- אימייל לא מאומת ומשתמשת שם-משתמש: בלי התראה
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000c2', 'spam@example.com');
+insert into auth.users (id, email, email_confirmed_at)
+values ('00000000-0000-0000-0000-0000000000c3', 'dana.k@users.yoga.invalid', now());
+select t.ok((select count(*) from net.requests) = 1, 'בלי התראה לאימייל לא מאומת או למשתמשת שליאור יצרה');
+
+-- מנויים
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-0000000000c1');
+select save_push_subscription('https://fcm.googleapis.com/fcm/send/aaa',
+  'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4', 'BTBZMqHH6r4Tts7J_aSIgg', 'test');
+select t.ok((select count(*) from push_subscriptions) = 1, 'משתמשת רואה את המנוי שלה');
+select t.fails($q$insert into push_subscriptions (user_id, endpoint, p256dh, auth) values (auth.uid(), 'https://x', 'a', 'b')$q$,
+               'permission denied', 'אין כתיבה ישירה לטבלה');
+select t.fails($q$select save_push_subscription('http://evil.example', 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4', 'BTBZMqHH6r4Tts7J_aSIgg')$q$,
+               'check constraint', 'רק כתובות https');
+select t.fails('select get_push_config()', 'permission denied', 'משתמשת לא קוראת את הסודות');
+select t.fails($q$select notify_admins_internal('x', '{}')$q$, 'permission denied', 'משתמשת לא שולחת התראות בעצמה');
+select t.as_user('00000000-0000-0000-0000-00000000000a');
+select t.ok((select count(*) from push_subscriptions) = 0, 'גם מנהלת לא רואה מנויים של אחרות');
+select delete_push_subscription('https://fcm.googleapis.com/fcm/send/aaa');
+reset role;
+select t.ok((select count(*) from push_subscriptions) = 1, 'אי אפשר למחוק מנוי של מישהי אחרת');
+set role service_role;
+select (get_push_config()->>'notify_secret') is not null as srv_ok \gset
+reset role;
+select t.ok(:'srv_ok'::boolean, 'השרת קורא את הסוד');
+
 \echo 'כל הבדיקות עברו'

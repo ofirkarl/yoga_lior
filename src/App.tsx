@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactElement } from "react";
 import { api, type Session } from "./lib/api";
 import { errorMessage } from "./lib/errors";
+import { registerServiceWorker } from "./lib/push";
 import type { Profile } from "./lib/types";
 import { AskProvider, CalendarIcon, GaugeIcon, ListIcon, Loading, PeopleIcon, TicketIcon, ToastProvider } from "./components/ui";
 import { Login } from "./screens/Login";
@@ -118,8 +119,19 @@ const ADMIN_TABS: { id: AdminTab; label: string; Icon: () => ReactElement }[] = 
   { id: "classes", label: "שיעורים", Icon: CalendarIcon },
 ];
 
+/** לשונית פתיחה מהקישור (למשל לחיצה על התראה מובילה ל-?tab=members) */
+function initialAdminTab(): AdminTab {
+  const t = new URLSearchParams(window.location.search).get("tab");
+  if (t) window.history.replaceState(null, "", window.location.pathname + window.location.hash);
+  return ADMIN_TABS.some((x) => x.id === t) ? (t as AdminTab) : "room";
+}
+
 function AdminMain({ profile }: { profile: Profile }) {
-  const [tab, setTab] = useState<AdminTab>("room");
+  const [tab, setTab] = useState<AdminTab>(initialAdminTab);
+
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
 
   useEffect(() => {
     const t = ADMIN_TABS.find((x) => x.id === tab)!;

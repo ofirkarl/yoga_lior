@@ -196,6 +196,9 @@ export const api = {
   async claimBalance(id: string, user: string) { await wait(); const b = balances.find((x) => x.id === id); if (b) { b.claimed_by = user; b.claimed_at = new Date().toISOString(); } },
   async deleteBalance(id: string) { await wait(); const i = balances.findIndex((x) => x.id === id); if (i >= 0) balances.splice(i, 1); },
   async resetPassword() { await wait(); return { temp_password: "Hm4tNb8vYc2s" }; },
+  async savePushSubscription() { await wait(); },
+  async deletePushSubscription() { await wait(); },
+  async sendTestPush() { await wait(); return { sent: 1, devices: 1 }; },
 };
 
 const products: Product[] = [

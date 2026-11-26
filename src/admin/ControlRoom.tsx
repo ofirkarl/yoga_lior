@@ -6,6 +6,7 @@ import {
 } from "../lib/format";
 import type { ActivityItem, Dashboard, DashboardSession } from "../lib/types";
 import { Loading } from "../components/ui";
+import { PushCard } from "./PushCard";
 
 export type AdminTab = "room" | "members" | "classes";
 
@@ -84,6 +85,8 @@ export function ControlRoom({ name, go }: { name: string; go: (t: AdminTab) => v
           </ul>
         </section>
       )}
+
+      <PushCard />
 
       {/* מספרים */}
       <section aria-labelledby="kpis">

@@ -26,3 +26,22 @@ grant execute on function auth.uid() to anon, authenticated, service_role;
 alter default privileges in schema public grant all on tables    to anon, authenticated, service_role;
 alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
+
+-- Vault ו-pg_net, בגרסה מינימלית: הסודות נשמרים בגלוי, ובקשות HTTP רק נרשמות בטבלה
+create schema vault;
+create table vault.secrets (id uuid primary key default gen_random_uuid(), name text unique, secret text, description text);
+create view vault.decrypted_secrets as select id, name, secret as decrypted_secret, description from vault.secrets;
+create function vault.create_secret(new_secret text, new_name text default null, new_description text default '')
+returns uuid language sql as $$
+  insert into vault.secrets (name, secret, description) values (new_name, new_secret, new_description) returning id
+$$;
+revoke all on schema vault from public;
+
+create schema net;
+create table net.requests (id bigserial primary key, url text, headers jsonb, body jsonb);
+create function net.http_post(url text, body jsonb default '{}', params jsonb default '{}',
+                              headers jsonb default '{}', timeout_milliseconds int default 5000)
+returns bigint language sql as $$
+  insert into net.requests (url, headers, body) values (url, headers, body) returning id
+$$;
+revoke all on schema net from public;
