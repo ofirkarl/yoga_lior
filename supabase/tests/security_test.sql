@@ -251,4 +251,50 @@ insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data, email_
 select t.ok((select role = 'trainee' and status = 'pending' from profiles where id = '00000000-0000-0000-0000-0000000000f3'),
             'כניסה עם גוגל של מישהי אחרת: מתאמנת ממתינה');
 
+-- ===== מעבר מארבוקס: יתרות =====
+select t.ok(norm_phone('+972-50-123-4567') = '0501234567' and norm_phone('050 1234567') = '0501234567', 'נרמול טלפון');
+insert into auth.users (id, email, raw_user_meta_data) values ('00000000-0000-0000-0000-0000000000b1', 'noa@example.com', '{"full_name":"נועה"}');
+update auth.users set email_confirmed_at = now() where id = '00000000-0000-0000-0000-0000000000d1';
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-00000000000a');
+select t.ok((admin_import_balances('[
+  {"full_name":"דנה כהן","email":"Dana@Example.com","entries_left":3,"valid_until":"2027-01-15"},
+  {"full_name":"נועה פרץ","phone":"+972 52 765 4321","entries_left":6,"valid_until":"2027-02-01"},
+  {"full_name":"יעל מזרחי","phone":"054-1111111","entries_left":2,"valid_until":"2027-01-01"}
+]') ->> 'claimed')::int = 1, 'יתרה של מתאמנת פעילה נקשרת מיד לפי אימייל');
+select t.ok((select entries_left from entitlements where user_id = '00000000-0000-0000-0000-0000000000d1' and title = 'יתרה מארבוקס') = 3,
+            'דנה קיבלה כרטיסייה עם 3 כניסות');
+reset role;
+
+-- נועה מצטרפת, מוסיפה טלפון, וליאור מאשרת
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-0000000000b1');
+update profiles set phone = '052-7654321' where id = auth.uid();
+select t.ok((select count(*) from entitlements) = 0, 'לפני אישור: היתרה עוד לא נקשרה');
+select t.ok((select count(*) from imported_balances) = 0, 'מתאמנת לא רואה את רשימת היתרות');
+reset role;
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-00000000000a');
+select admin_set_member_status('00000000-0000-0000-0000-0000000000b1', 'active');
+select t.ok((select count(*) from entitlements where user_id = '00000000-0000-0000-0000-0000000000b1') = 0,
+            'התאמה לפי טלפון לא נקשרת לבד (טלפון לא מאומת)');
+select t.ok((select count(*) from imported_balances where claimed_by is null) = 2, 'שתי יתרות ממתינות לשיוך ידני');
+-- אימייל שלא אומת לא מקבל יתרה גם אם הוא תואם
+reset role;
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000b2', 'yael@example.com');
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-00000000000a');
+select admin_import_balances('[{"full_name":"יעל","email":"yael@example.com","entries_left":4,"valid_until":"2027-03-01"}]');
+select admin_set_member_status('00000000-0000-0000-0000-0000000000b2', 'active');
+select t.ok((select count(*) from entitlements where user_id = '00000000-0000-0000-0000-0000000000b2') = 0, 'אימייל לא מאומת לא מקבל יתרה');
+select admin_delete_balance((select id from imported_balances where email = 'yael@example.com'));
+select admin_claim_balance((select id from imported_balances where full_name = 'נועה פרץ'), '00000000-0000-0000-0000-0000000000b1');
+select t.ok((select entries_left from entitlements where user_id = '00000000-0000-0000-0000-0000000000b1') = 6, 'שיוך ידני של נועה');
+select admin_claim_balance((select id from imported_balances where claimed_by is null),
+                           '00000000-0000-0000-0000-0000000000a2');
+select t.ok((select count(*) from imported_balances where claimed_by is null) = 0, 'שיוך ידני עובד');
+select t.fails('select admin_delete_balance((select id from imported_balances limit 1))', 'balance_already_claimed',
+               'אי אפשר למחוק יתרה שכבר נקשרה');
+reset role;
+
 \echo 'כל הבדיקות עברו'

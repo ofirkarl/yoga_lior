@@ -2,7 +2,7 @@
 // ההרשאות נאכפות בבסיס הנתונים (RLS ופונקציות), לא כאן.
 import { createClient, type Session } from "@supabase/supabase-js";
 import type {
-  AdminSession, AttendMode, Dashboard, Entitlement, HealthAnswers, Member, MyBooking, PaymentMethod, Product, Profile, ScheduleItem, UserStatus,
+  AdminSession, AttendMode, ImportedBalance, Dashboard, Entitlement, HealthAnswers, Member, MyBooking, PaymentMethod, Product, Profile, ScheduleItem, UserStatus,
 } from "./types";
 
 const url = import.meta.env.VITE_SUPABASE_URL as string;
@@ -203,6 +203,27 @@ export const api = {
     const { data, error } = await supabase.functions.invoke("admin-users", { body: { action: "create", ...p } });
     if (error) throw await functionError(error);
     return data as { username: string; temp_password: string };
+  },
+
+  async listBalances(): Promise<ImportedBalance[]> {
+    return must(
+      await supabase.from("imported_balances")
+        .select("id, full_name, email, phone, entries_left, valid_until, created_at, claimed_by, claimed_at")
+        .order("claimed_at", { ascending: true, nullsFirst: true }).order("full_name"),
+    ) as ImportedBalance[];
+  },
+
+  async importBalances(rows: { full_name: string; email: string | null; phone: string | null; entries_left: number; valid_until: string }[]):
+    Promise<{ inserted: number; claimed: number }> {
+    return must(await supabase.rpc("admin_import_balances", { p_rows: rows })) as { inserted: number; claimed: number };
+  },
+
+  async claimBalance(balanceId: string, userId: string): Promise<void> {
+    must(await supabase.rpc("admin_claim_balance", { p_balance: balanceId, p_user: userId }));
+  },
+
+  async deleteBalance(balanceId: string): Promise<void> {
+    must(await supabase.rpc("admin_delete_balance", { p_balance: balanceId }));
   },
 
   async resetPassword(userId: string): Promise<{ temp_password: string }> {

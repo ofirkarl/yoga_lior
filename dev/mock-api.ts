@@ -1,6 +1,6 @@
 // גרסת הדגמה של שכבת הנתונים, לתצוגה מקדימה ובדיקות בלי Supabase.
 // בוחרים מצב בכתובת: ?s=login | password | pending | health | main
-import type { AdminSession, AttendMode, Dashboard, Entitlement, HealthAnswers, Member, MyBooking, Product, Profile, ScheduleItem } from "../src/lib/types";
+import type { ImportedBalance, AdminSession, AttendMode, Dashboard, Entitlement, HealthAnswers, Member, MyBooking, Product, Profile, ScheduleItem } from "../src/lib/types";
 
 export type Session = { user: { id: string } };
 
@@ -187,6 +187,14 @@ export const api = {
   async markAttendance() { await wait(); },
   async generateSessions() { await wait(); return 0; },
   async createUsernameUser(p: { username: string }) { await wait(); return { username: p.username, temp_password: "Kp7rQx9mTa3w" }; },
+  async listBalances(): Promise<ImportedBalance[]> { await wait(); return balances.map((b) => ({ ...b })); },
+  async importBalances(rows: { full_name: string; email: string | null; phone: string | null; entries_left: number; valid_until: string }[]) {
+    await wait();
+    rows.forEach((r, i) => balances.push({ id: `nb${Date.now()}${i}`, created_at: new Date().toISOString(), claimed_by: null, claimed_at: null, ...r }));
+    return { inserted: rows.length, claimed: 0 };
+  },
+  async claimBalance(id: string, user: string) { await wait(); const b = balances.find((x) => x.id === id); if (b) { b.claimed_by = user; b.claimed_at = new Date().toISOString(); } },
+  async deleteBalance(id: string) { await wait(); const i = balances.findIndex((x) => x.id === id); if (i >= 0) balances.splice(i, 1); },
   async resetPassword() { await wait(); return { temp_password: "Hm4tNb8vYc2s" }; },
 };
 
@@ -207,6 +215,10 @@ const members: Member[] = [
   mk("m7", "נועה פרץ", "pending"), mk("m8", "קרן אלון", "pending"),
   mk("m1", "דנה כהן", "active", [card(3, 5)]), mk("m2", "מיכל לוי", "active", [card(1, 30)]),
   mk("m3", "רונית אברהם", "active", [card(7, 25)]), mk("m4", "שירה גולן", "active", []),
+];
+const balances: ImportedBalance[] = [
+  { id: "ib1", full_name: "רונית אברהם", email: null, phone: "050-0000000", entries_left: 4, valid_until: "2027-01-20", created_at: "", claimed_by: null, claimed_at: null },
+  { id: "ib2", full_name: "גלית שמעוני", email: "galit@example.com", phone: null, entries_left: 7, valid_until: "2027-02-10", created_at: "", claimed_by: null, claimed_at: null },
 ];
 export type Api = typeof api;
 

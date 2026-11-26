@@ -4,6 +4,7 @@ import { errorMessage } from "../lib/errors";
 import { dayKey, formatDate, formatMoney, METHOD_LABEL } from "../lib/format";
 import type { Entitlement, HealthAnswers, Member, PaymentMethod, Product } from "../lib/types";
 import { Field, Loading, Sheet, useAsk, useToast } from "../components/ui";
+import { downloadCsv, membersCsv, Migration } from "./Migration";
 
 const today = () => dayKey(new Date().toISOString());
 const activeCards = (m: Member) => m.entitlements.filter((e) => e.status === "active" && e.valid_until >= today());
@@ -16,6 +17,7 @@ export function Members() {
   const [q, setQ] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [migrating, setMigrating] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -63,9 +65,14 @@ export function Members() {
         </Field>
       </div>
 
-      <button type="button" className="btn btn--secondary btn--block" onClick={() => setCreating(true)}>
-        מתאמנת חדשה בלי חשבון Google
-      </button>
+      <div className="btn-row" style={{ marginTop: 0 }}>
+        <button type="button" className="btn btn--secondary" onClick={() => setCreating(true)}>מתאמנת חדשה בלי Google</button>
+        <button type="button" className="btn btn--secondary" onClick={() => setMigrating(true)}>העברת יתרות מארבוקס</button>
+        <button type="button" className="btn btn--ghost" disabled={!members?.length}
+                onClick={() => downloadCsv(`yoga-lior-backup-${new Date().toISOString().slice(0, 10)}.csv`, membersCsv(members ?? []))}>
+          גיבוי לקובץ אקסל
+        </button>
+      </div>
 
       {error && <p className="notice notice--error" role="alert">{error}</p>}
 
@@ -133,6 +140,11 @@ export function Members() {
       <Sheet open={!!open} onClose={() => setOpenId(null)} title={open?.full_name || open?.username || "מתאמנת"}>
         {open && <MemberDetail m={open} products={products} onChanged={load} onStatus={(s) => setStatus(open, s)} />}
         <button type="button" className="btn btn--ghost btn--block" style={{ marginTop: "1rem" }} onClick={() => setOpenId(null)}>סגירה</button>
+      </Sheet>
+
+      <Sheet open={migrating} onClose={() => setMigrating(false)} title="העברת יתרות מארבוקס">
+        {migrating && <Migration members={members ?? []} onChanged={load} />}
+        <button type="button" className="btn btn--ghost btn--block" style={{ marginTop: "1rem" }} onClick={() => setMigrating(false)}>סגירה</button>
       </Sheet>
 
       <Sheet open={creating} onClose={() => setCreating(false)} title="מתאמנת חדשה בלי Google">

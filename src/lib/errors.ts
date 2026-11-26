@@ -22,6 +22,8 @@ const MESSAGES: Record<string, string> = {
   bad_phone: "מספר הטלפון לא נראה שלם.",
   not_username_account: "למשתמשת הזו אין סיסמה אצלנו. היא נכנסת עם גוגל.",
   function_unavailable: "יצירת משתמשות עם שם משתמש עוד לא הופעלה בשרת. אופיר יפעיל אותה כשהאפליקציה תעלה לאוויר.",
+  balance_already_claimed: "היתרה הזו כבר שויכה למתאמנת.",
+  bad_rows: "לא נמצאו שורות תקינות להעברה.",
   booking_not_found: "ההרשמה הזו כבר לא פעילה.",
 };
 

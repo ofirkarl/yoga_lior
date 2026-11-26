@@ -150,3 +150,15 @@ export interface AdminSession {
     profile: { id: string; full_name: string; phone: string | null };
   }[];
 }
+
+export interface ImportedBalance {
+  id: string;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  entries_left: number;
+  valid_until: string;
+  created_at: string;
+  claimed_by: string | null;
+  claimed_at: string | null;
+}
