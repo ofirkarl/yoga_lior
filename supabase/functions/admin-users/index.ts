@@ -24,8 +24,8 @@ import {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-// כתובת האפליקציה, למשל https://yoga-lior.example.com. בקשות מכל מקור אחר נדחות.
-const APP_ORIGIN = Deno.env.get("APP_ORIGIN") ?? "";
+// כתובת האפליקציה. בקשות מכל מקור אחר נדחות.
+const APP_ORIGIN = Deno.env.get("APP_ORIGIN") ?? "https://yoga-lior.vercel.app";
 
 function cors(origin: string | null): HeadersInit {
   return {
