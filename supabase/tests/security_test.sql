@@ -97,7 +97,9 @@ select t.as_user('00000000-0000-0000-0000-0000000000d1');
 select t.ok((select count(*) from get_schedule(now(), now() + interval '60 days')) = 3, 'מתאמנת מאושרת רואה את הלוח');
 select t.fails('select book_class((select id from class_sessions where title = ''רמה 1''))', 'health_declaration_required',
                'אי אפשר להירשם בלי הצהרת בריאות');
+select t.ok(not has_health_declaration(), 'לפני מילוי: אין הצהרה');
 select submit_health_declaration('{"q1": false}', 'דנה כהן');
+select t.ok(has_health_declaration(), 'אחרי מילוי: המתאמנת יודעת שמילאה');
 select t.ok((select count(*) from health_declarations) = 0, 'מתאמנת לא יכולה לקרוא הצהרות בריאות, גם לא שלה');
 select t.fails('select book_class((select id from class_sessions where title = ''רמה 1''))', 'no_entitlement',
                'אי אפשר להירשם בלי כרטיסייה');

@@ -12,6 +12,6 @@ pg "$PGBIN/pg_ctl -D $DIR/data -o '-k $DIR -c listen_addresses= -c timezone=Asia
 trap 'pg "$PGBIN/pg_ctl -D $DIR/data -m immediate stop >/dev/null"; rm -rf "$DIR"' EXIT
 PSQL="psql -h $DIR -U postgres -d postgres -v ON_ERROR_STOP=1 -q"
 $PSQL -f supabase/tests/supabase_shim.sql
-$PSQL -f supabase/migrations/0001_init.sql
+for f in supabase/migrations/*.sql; do $PSQL -f "$f"; done
 $PSQL -f supabase/seed.sql
 $PSQL -t -f supabase/tests/security_test.sql 2>&1 | sed 's/^psql:[^:]*:[0-9]*: //' | grep -E 'ok:|FAIL|ERROR|עברו' || true
