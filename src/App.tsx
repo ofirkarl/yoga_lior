@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ReactElement } from "react";
 import { api, type Session } from "./lib/api";
 import { errorMessage } from "./lib/errors";
 import type { Profile } from "./lib/types";
-import { CalendarIcon, GaugeIcon, ListIcon, Loading, PeopleIcon, TicketIcon, ToastProvider } from "./components/ui";
+import { AskProvider, CalendarIcon, GaugeIcon, ListIcon, Loading, PeopleIcon, TicketIcon, ToastProvider } from "./components/ui";
 import { Login } from "./screens/Login";
 import { ChangePassword } from "./screens/ChangePassword";
 import { Pending } from "./screens/Pending";
@@ -24,8 +24,10 @@ const TABS: { id: Tab; label: string; Icon: () => ReactElement }[] = [
 export function App() {
   return (
     <ToastProvider>
+      <AskProvider>
       <a className="skip-link" href="#main">דילוג לתוכן</a>
       <Gate />
+      </AskProvider>
     </ToastProvider>
   );
 }

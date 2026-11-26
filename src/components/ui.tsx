@@ -152,3 +152,38 @@ export const GaugeIcon = () =>
   icon(<><path d="M4 18a8 8 0 1 1 16 0" /><path d="M12 18l4-6" /><circle cx="12" cy="18" r="1.2" /></>);
 export const PeopleIcon = () =>
   icon(<><circle cx="9" cy="8" r="3.2" /><path d="M3 20c.8-3.4 3.2-5 6-5s5.2 1.6 6 5" /><circle cx="17" cy="9" r="2.4" /><path d="M16 14.2c2.4.2 4.2 1.7 4.8 4.3" /></>);
+
+/* ---------- שאלת אישור נגישה (במקום confirm/prompt של הדפדפן) ---------- */
+type AskOptions = { title: string; message?: string; confirm: string; danger?: boolean; input?: string };
+type AskFn = (o: AskOptions) => Promise<string | null>;
+const AskCtx = createContext<AskFn>(async () => null);
+export const useAsk = () => useContext(AskCtx);
+
+export function AskProvider({ children }: { children: ReactNode }) {
+  const [req, setReq] = useState<(AskOptions & { resolve: (v: string | null) => void }) | null>(null);
+  const [value, setValue] = useState("");
+  const inputId = useId();
+  const ask = useCallback<AskFn>((o) => new Promise((resolve) => { setValue(""); setReq({ ...o, resolve }); }), []);
+  const close = (v: string | null) => { req?.resolve(v); setReq(null); };
+  return (
+    <AskCtx.Provider value={ask}>
+      {children}
+      <Sheet open={!!req} onClose={() => close(null)} title={req?.title ?? ""}>
+        {req?.message && <p>{req.message}</p>}
+        {req?.input && (
+          <div className="field">
+            <label htmlFor={inputId}>{req.input}</label>
+            <input id={inputId} className="input" value={value} onChange={(e) => setValue(e.target.value)} autoFocus />
+          </div>
+        )}
+        <div className="btn-row">
+          <button type="button" className={`btn ${req?.danger ? "btn--danger" : "btn--primary"}`}
+                  disabled={!!req?.input && value.trim().length < 2} onClick={() => close(req?.input ? value.trim() : "yes")}>
+            {req?.confirm}
+          </button>
+          <button type="button" className="btn btn--ghost" onClick={() => close(null)}>חזרה</button>
+        </div>
+      </Sheet>
+    </AskCtx.Provider>
+  );
+}

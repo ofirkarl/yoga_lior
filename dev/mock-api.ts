@@ -4,7 +4,7 @@ import type { AdminSession, AttendMode, Dashboard, Entitlement, HealthAnswers, M
 
 export type Session = { user: { id: string } };
 
-const scenario = new URLSearchParams(location.search).get("s") ?? "main";
+const scenario = location.hash.slice(1) || new URLSearchParams(location.search).get("s") || "main";
 const DAY = 86_400_000;
 
 let session: Session | null = scenario === "login" ? null : { user: { id: "u1" } };

@@ -3,7 +3,7 @@ import { api } from "../lib/api";
 import { errorMessage } from "../lib/errors";
 import { dayKey, formatDate, formatMoney, METHOD_LABEL } from "../lib/format";
 import type { Entitlement, HealthAnswers, Member, PaymentMethod, Product } from "../lib/types";
-import { Field, Loading, Sheet, useToast } from "../components/ui";
+import { Field, Loading, Sheet, useAsk, useToast } from "../components/ui";
 
 const today = () => dayKey(new Date().toISOString());
 const activeCards = (m: Member) => m.entitlements.filter((e) => e.status === "active" && e.valid_until >= today());
@@ -146,6 +146,7 @@ function MemberDetail({ m, products, onChanged, onStatus }: {
   m: Member; products: Product[]; onChanged: () => Promise<void>; onStatus: (s: "active" | "blocked") => void;
 }) {
   const toast = useToast();
+  const ask = useAsk();
   const [health, setHealth] = useState<{ answers: HealthAnswers; signed_at: string } | null | undefined>(undefined);
   const [productId, setProductId] = useState(products[0]?.id ?? "");
   const [method, setMethod] = useState<PaymentMethod>("cash");
@@ -178,7 +179,12 @@ function MemberDetail({ m, products, onChanged, onStatus }: {
   }
 
   async function adjust(ent: Entitlement, delta: number) {
-    const reason = window.prompt(delta > 0 ? "למה מוסיפים כניסה? (נשמר ביומן)" : "למה מורידים כניסה? (נשמר ביומן)");
+    const reason = await ask({
+      title: delta > 0 ? "הוספת כניסה" : "הורדת כניסה",
+      message: `${c_title(ent)}. הסיבה נשמרת ביומן הפעולות.`,
+      input: "סיבה",
+      confirm: delta > 0 ? "הוספה" : "הורדה",
+    });
     if (!reason) return;
     try {
       await api.adjustEntitlement(ent.id, delta, null, reason);
@@ -190,7 +196,7 @@ function MemberDetail({ m, products, onChanged, onStatus }: {
   }
 
   async function reset() {
-    if (!window.confirm("לאפס את הסיסמה? המתאמנת תנותק מכל המכשירים ותקבל סיסמה זמנית חדשה.")) return;
+    if (!(await ask({ title: "איפוס סיסמה", message: "המתאמנת תנותק מכל המכשירים ותקבל סיסמה זמנית חדשה.", confirm: "איפוס" }))) return;
     try {
       setTempPw((await api.resetPassword(m.id)).temp_password);
     } catch (err) {
@@ -272,7 +278,7 @@ function MemberDetail({ m, products, onChanged, onStatus }: {
       <div className="btn-row">
         {m.username && <button type="button" className="btn btn--ghost" onClick={reset}>איפוס סיסמה</button>}
         {m.status === "active"
-          ? <button type="button" className="btn btn--danger" onClick={() => window.confirm(`לחסום את ${m.full_name}? היא לא תוכל להירשם לשיעורים.`) && onStatus("blocked")}>חסימה</button>
+          ? <button type="button" className="btn btn--danger" onClick={async () => (await ask({ title: `חסימת ${m.full_name}`, message: "היא לא תוכל להירשם לשיעורים. אפשר לבטל את החסימה בכל רגע.", confirm: "חסימה", danger: true })) && onStatus("blocked")}>חסימה</button>
           : <button type="button" className="btn btn--primary" onClick={() => onStatus("active")}>{m.status === "pending" ? "אישור" : "ביטול חסימה"}</button>}
       </div>
     </div>
@@ -358,3 +364,5 @@ function CreateUser({ onDone, onClose }: { onDone: () => Promise<void>; onClose:
     </form>
   );
 }
+
+const c_title = (e: Entitlement) => `${e.title}, ${e.entries_left} כניסות נשארו`;

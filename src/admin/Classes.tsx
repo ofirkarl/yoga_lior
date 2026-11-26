@@ -3,7 +3,7 @@ import { api } from "../lib/api";
 import { errorMessage } from "../lib/errors";
 import { dayKey, formatDay, formatDeadline, formatTime } from "../lib/format";
 import type { AdminSession } from "../lib/types";
-import { Field, Loading, Sheet, useToast } from "../components/ui";
+import { Field, Loading, Sheet, useAsk, useToast } from "../components/ui";
 
 const ACTIVE = ["booked", "attended", "no_show"];
 const STATUS_LABEL: Record<string, string> = {
@@ -12,6 +12,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 export function Classes() {
   const toast = useToast();
+  const ask = useAsk();
   const [sessions, setSessions] = useState<AdminSession[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<AdminSession | null>(null);
@@ -75,7 +76,7 @@ export function Classes() {
   }
 
   async function removeBooking(bookingId: string, name: string) {
-    if (!window.confirm(`לבטל את ההרשמה של ${name}? הכניסה תחזור לכרטיסייה שלה.`)) return;
+    if (!(await ask({ title: `הסרת ${name} מהשיעור`, message: "הכניסה תחזור לכרטיסייה שלה.", confirm: "הסרה", danger: true }))) return;
     try {
       await api.cancelBooking(bookingId);
       toast("ההרשמה בוטלה והכניסה הוחזרה.");
