@@ -89,6 +89,10 @@ export function Login() {
       <p className="hint" style={{ marginTop: "1.5rem", color: "var(--muted)" }}>
         אין לך חשבון Google ועוד לא קיבלת שם משתמש? ליאור תשלח לך פרטי כניסה.
       </p>
+
+      <p className="hint" style={{ marginTop: "1rem" }}>
+        <a href="/home.html">על האפליקציה</a> · <a href="/privacy.html">מדיניות פרטיות</a>
+      </p>
     </main>
   );
 }
