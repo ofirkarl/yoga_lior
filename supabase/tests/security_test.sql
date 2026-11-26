@@ -128,7 +128,11 @@ select t.ok((select entries_left from entitlements where title = 'ניסיון')
 select t.ok((select status = 'used_up' from entitlements where title = 'ניסיון'), 'כרטיסייה שנגמרה מסומנת כמנוצלת');
 select t.fails('select book_class((select id from class_sessions where title = ''רמה 1''))', 'already_booked', 'אין הרשמה כפולה');
 select t.fails('select book_class((select id from class_sessions where title = ''רמה 1''), ''zoom'')', 'already_booked', 'אין הרשמה כפולה גם לזום');
-select t.ok((select booked_studio from get_schedule(now(), now() + interval '30 days') where title = 'רמה 1') = 1, 'הלוח מציג מספר נרשמות');
+select t.ok((select booked_studio = max_participants and booked_zoom = 0 and waitlist_count = 0 and min_participants = 0
+             from get_schedule_v2(now(), now() + interval '30 days') where title = 'רמה 1'), 'מתאמנת רואה רק שהשיעור מלא, בלי מספרים ובלי מינימום');
+select t.ok((select min_participants = 0 and waitlist_count = 0 from get_schedule(now(), now() + interval '30 days') where title = 'רמה 1'), 'גם הלוח הישן לא חושף תפוסה');
+select t.as_user('00000000-0000-0000-0000-00000000000a');
+select t.ok((select booked_studio = 1 and min_participants = 1 from get_schedule_v2(now(), now() + interval '30 days') where title = 'רמה 1'), 'המנהלת רואה את המספרים האמיתיים');
 reset role;
 
 -- ===== מיכל: השיעור מלא (מקסימום 1) =====
@@ -409,8 +413,9 @@ select t.as_user('00000000-0000-0000-0000-0000000000d1');
 select t.ok((select my_offer_expires_at between now() + interval '59 minutes' and now() + interval '61 minutes' and not my_offer_open
              from get_schedule_v2(now(), now() + interval '2 days') where title = 'תור'), 'דנה קיבלה הצעה לשעה');
 select t.as_user('00000000-0000-0000-0000-0000000000c1');
-select t.ok((select held_studio = 1 and my_offer_expires_at is null from get_schedule_v2(now(), now() + interval '2 days') where title = 'תור'),
-            'נועה רואה שהמקום שמור, ואין לה הצעה');
+select t.ok((select booked_studio >= max_participants and held_studio = 0 and waitlist_count = 0 and my_offer_expires_at is null
+             from get_schedule_v2(now(), now() + interval '2 days') where title = 'תור'),
+            'נועה רואה שהשיעור מלא (המקום שמור), בלי מספרים, ואין לה הצעה');
 select t.fails($q$select accept_offer((select b.id from bookings b join class_sessions s on s.id = b.session_id where s.title = 'תור' and b.user_id = auth.uid()))$q$,
                'offer_expired', 'אי אפשר לאשר בלי הצעה');
 select t.fails($q$select accept_offer((select b.id from bookings b join class_sessions s on s.id = b.session_id where s.title = 'תור' and b.user_id = '00000000-0000-0000-0000-0000000000d1'))$q$,

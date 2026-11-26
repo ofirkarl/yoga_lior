@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api } from "../lib/api";
 import { errorMessage } from "../lib/errors";
-import { dayKey, formatDay, formatDeadline, formatTime, missingText } from "../lib/format";
+import { dayKey, formatDay, formatDeadline, formatTime } from "../lib/format";
 import type { AttendMode, ScheduleItem } from "../lib/types";
 import { Loading, Sheet, useToast } from "../components/ui";
 import { OfferBox } from "../components/OfferBox";
@@ -80,9 +80,9 @@ export function Schedule({ onChanged, balance, name }: { onChanged?: () => void;
         toast(
           res.status === "waitlist"
             ? autoEnroll
-              ? "ההרשמה לרשימת ההמתנה נקלטה. כשיתפנה מזרן, היא תושלם אוטומטית."
-              : "ההרשמה לרשימת ההמתנה נקלטה. כשיתפנה מזרן תגיע הודעה."
-            : pending.mode === "zoom" ? `ההרשמה ל${pending.item.title} בזום נקלטה.` : "המזרן שלך שמור.",
+              ? "ההרשמה לרשימת ההמתנה נקלטה. כשיתפנה מקום, היא תושלם אוטומטית."
+              : "ההרשמה לרשימת ההמתנה נקלטה. כשיתפנה מקום תגיע הודעה."
+            : pending.mode === "zoom" ? `ההרשמה ל${pending.item.title} בזום נקלטה.` : "המקום שלך שמור.",
         );
       } else {
         const res = await api.cancelBooking(pending.item.my_booking_id!);
@@ -208,8 +208,8 @@ export function Schedule({ onChanged, balance, name }: { onChanged?: () => void;
   );
 }
 
-const taken = (it: ScheduleItem) => it.booked_studio + (it.held_studio ?? 0);
-const isFull = (it: ScheduleItem) => taken(it) >= it.max_participants;
+// השרת לא שולח למתאמנים מספרים: booked_studio שווה למקסימום רק כשהשיעור מלא
+const isFull = (it: ScheduleItem) => it.booked_studio + (it.held_studio ?? 0) >= it.max_participants;
 const deadlinePassed = (it: ScheduleItem) => new Date(it.cancel_deadline).getTime() < Date.now();
 const endTime = (it: ScheduleItem) => formatTime(new Date(new Date(it.starts_at).getTime() + it.duration_min * 60_000).toISOString());
 
@@ -253,25 +253,19 @@ function ConfirmBody({ pending }: { pending: Pending }) {
   );
 }
 
-/** שיעור אחד: השעה והמזרנים. נוגעים במזרן פנוי כדי להירשם. */
+/** שיעור אחד: שעה, שם ופעולה אחת. מתאמנים לא רואים כמה נרשמו. */
 function RoomCard({ item: it, onBook, onCancel, onChanged }: {
   item: ScheduleItem; onBook: (m: AttendMode) => void; onCancel: () => void; onChanged: () => void;
 }) {
   const cancelled = it.status === "cancelled";
   const offer = it.my_status === "waitlist" && it.my_offer_expires_at && it.my_booking_id;
   const mine = it.my_status;
-  const mineStudio = mine === "booked" && it.my_mode === "studio";
-  const max = it.max_participants;
-  const used = Math.min(taken(it), max);
-  const others = used - (mineStudio ? 1 : 0);
-  const free = max - used;
+  const full = isFull(it);
   const canPick = !cancelled && !mine;
-  const missing = it.min_participants - (it.booked_studio + it.booked_zoom);
   const titleId = `c-${it.session_id}`;
-  const freeText = cancelled ? "השיעור בוטל" : free === 0 ? (it.waitlist_count > 0 ? `מלא, ${it.waitlist_count} בהמתנה` : "כל המזרנים תפוסים") : free === 1 ? "מזרן אחד פנוי" : `${free} מזרנים פנויים`;
 
   return (
-    <article className={`room-card${cancelled ? " is-cancelled" : ""}`} aria-labelledby={titleId}>
+    <article className={`room-card${cancelled ? " is-cancelled" : ""}${mine === "booked" ? " is-booked" : ""}`} aria-labelledby={titleId}>
       <div className="room-head">
         <div>
           <p className="room-time">{formatTime(it.starts_at)}</p>
@@ -279,23 +273,9 @@ function RoomCard({ item: it, onBook, onCancel, onChanged }: {
         </div>
         <p className="room-meta">
           <span>עד {endTime(it)}</span>
-          <span>{freeText}</span>
+          {cancelled ? <span>השיעור בוטל</span> : canPick && full ? <span>השיעור מלא</span> : null}
         </p>
       </div>
-
-      {!cancelled && (
-        <div className="room" role="group" aria-label={`${max} מזרנים, ${used} תפוסים`}>
-          {Array.from({ length: max }, (_, i) => {
-            if (i < others) return <span key={i} className="mat is-taken" aria-hidden="true" />;
-            if (mineStudio && i === others) return <span key={i} className="mat is-mine">שלך</span>;
-            return canPick ? (
-              <button key={i} type="button" className="mat is-free" onClick={() => onBook("studio")} aria-label={`מזרן פנוי. הרשמה ל${it.title}, ${formatTime(it.starts_at)}`} />
-            ) : (
-              <span key={i} className="mat is-free" aria-hidden="true" />
-            );
-          })}
-        </div>
-      )}
 
       {!cancelled && offer && (
         <OfferBox
@@ -311,7 +291,7 @@ function RoomCard({ item: it, onBook, onCancel, onChanged }: {
       {!cancelled && !offer && mine === "booked" && (
         <div className="room-foot">
           <p className="room-status is-mine">
-            {it.my_mode === "zoom" ? "ההרשמה שלך בזום" : "המזרן שלך שמור"}
+            {it.my_mode === "zoom" ? "ההרשמה שלך בזום" : "המקום שלך שמור"}
             <span className="room-note">{deadlinePassed(it) ? "מועד הביטול ללא חיוב עבר" : <>ביטול ללא חיוב עד {formatDeadline(it.cancel_deadline)}</>}</span>
           </p>
           <button type="button" className="text-btn" onClick={onCancel}>ביטול<span className="visually-hidden"> של {it.title}</span></button>
@@ -320,7 +300,7 @@ function RoomCard({ item: it, onBook, onCancel, onChanged }: {
 
       {!cancelled && !offer && mine === "waitlist" && (
         <div className="room-foot">
-          <p className="room-status">ברשימת ההמתנה<span className="room-note">כשיתפנה מזרן תגיע הודעה</span></p>
+          <p className="room-status">ברשימת ההמתנה<span className="room-note">כשיתפנה מקום תגיע הודעה</span></p>
           <button type="button" className="text-btn" onClick={onCancel}>יציאה מהרשימה<span className="visually-hidden"> של {it.title}</span></button>
         </div>
       )}
@@ -329,16 +309,10 @@ function RoomCard({ item: it, onBook, onCancel, onChanged }: {
 
       {canPick && (
         <div className="room-foot">
-          {free > 0 ? (
-            <p className="room-status">
-              נוגעים במזרן פנוי כדי לתפוס מקום
-              {missing > 0 && !deadlinePassed(it) && <span className="room-note">{missingText(missing)}</span>}
-            </p>
-          ) : (
-            <button type="button" className="btn btn--sm btn--primary" onClick={() => onBook("studio")}>
-              להמתין למזרן<span className="visually-hidden"> ב{it.title} {formatTime(it.starts_at)}</span>
-            </button>
-          )}
+          <button type="button" className={`btn ${full ? "btn--secondary" : "btn--primary"}`} onClick={() => onBook("studio")}>
+            {full ? "הצטרפות לרשימת ההמתנה" : "הרשמה לשיעור"}
+            <span className="visually-hidden">, {it.title} {formatTime(it.starts_at)}</span>
+          </button>
           {it.zoom_enabled && (
             <button type="button" className="text-btn" onClick={() => onBook("zoom")}>
               הצטרפות בזום<span className="visually-hidden"> ל{it.title} {formatTime(it.starts_at)}</span>

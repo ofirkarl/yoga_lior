@@ -1,5 +1,5 @@
 /* יוגה עם ליאור: "ערב בסטודיו", בגרסה בהירה.
-   הרעיון: החדר והמזרנים שבו. כל שיעור מוצג כחדר; נוגעים במזרן פנוי כדי להירשם.
+   הרעיון: ערב בסטודיו. כל שיעור הוא כרטיס עם שעה גדולה ופעולה אחת; התפוסה גלויה רק למנהלת.
    שלושה צבעי מזרן בלבד: פנוי, תפוס, שלך. צבע פעולה אחד (ענבר).
    אות אחת, Rubik, בשלושה משקלים (300 לשעות ולכותרות, 400 לטקסט, 500 להדגשה).
    מרווחים על רשת 4/8. כל זוג צבעים עומד ב-WCAG AA. */
@@ -540,6 +540,7 @@ strong, b { font-weight: 500; }
 
 /* כרטיס שיעור: שעה גדולה והחדר */
 .room-card { padding: 22px 20px 16px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 16px; }
+.room-card.is-booked { box-shadow: inset -6px 0 0 var(--mat-mine); }
 .room-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
 .room-time { margin: 0; font-size: 4rem; font-weight: 300; line-height: .95; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .room-title { margin: 4px 0 0; font-size: var(--t-title); font-weight: 400; line-height: 1.2; }
