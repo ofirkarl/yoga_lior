@@ -167,6 +167,10 @@ export function ControlRoom({ name, go }: { name: string; go: (t: AdminTab) => v
         </div>
       </section>
       <BackupCard />
+
+      <button type="button" className="btn btn--ghost btn--block" style={{ marginTop: "2rem" }} onClick={() => api.signOut()}>
+        יציאה מהחשבון
+      </button>
     </main>
   );
 }
