@@ -199,6 +199,9 @@ export const api = {
   async savePushSubscription() { await wait(); },
   async deletePushSubscription() { await wait(); },
   async sendTestPush() { await wait(); return { sent: 1, devices: 1 }; },
+  async backupStatus() { await wait(); return { last_at: null }; },
+  async getBackupToken() { await wait(); return "demo0000000000000000000000000000demo0000000000000000000000000000"; },
+  async rotateBackupToken() { await wait(); return "demo1111111111111111111111111111demo1111111111111111111111111111"; },
 };
 
 const products: Product[] = [

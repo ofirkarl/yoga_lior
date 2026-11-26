@@ -358,4 +358,21 @@ select (get_push_config()->>'notify_secret') is not null as srv_ok \gset
 reset role;
 select t.ok(:'srv_ok'::boolean, 'השרת קורא את הסוד');
 
+-- ---------------------------------------------------------------------
+-- גיבוי שבועי
+-- ---------------------------------------------------------------------
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-0000000000c1');
+select t.fails('select admin_get_backup_token()', 'admin_only', 'מתאמנת לא רואה את מפתח הגיבוי');
+select t.fails('select admin_rotate_backup_token()', 'admin_only', 'מתאמנת לא מחליפה את המפתח');
+select t.fails('select get_backup_token()', 'permission denied', 'משתמשת לא קוראת את המפתח ישירות');
+select t.fails('select admin_backup_status()', 'admin_only', 'מתאמנת לא רואה את מצב הגיבוי');
+select t.as_user('00000000-0000-0000-0000-00000000000a');
+select admin_get_backup_token() as tok1 \gset
+select admin_rotate_backup_token() as tok2 \gset
+select t.ok(length(:'tok1') = 64 and :'tok1' <> :'tok2', 'מנהלת רואה מפתח ומחליפה אותו');
+select t.ok(admin_get_backup_token() = :'tok2', 'המפתח החדש בתוקף');
+select t.ok((admin_backup_status()->>'last_at') is null, 'עוד לא היה גיבוי');
+reset role;
+
 \echo 'כל הבדיקות עברו'

@@ -243,6 +243,18 @@ export const api = {
     return data as { sent: number; devices?: number };
   },
 
+  async backupStatus(): Promise<{ last_at: string | null }> {
+    return must(await supabase.rpc("admin_backup_status")) as { last_at: string | null };
+  },
+
+  async getBackupToken(): Promise<string> {
+    return must(await supabase.rpc("admin_get_backup_token")) as string;
+  },
+
+  async rotateBackupToken(): Promise<string> {
+    return must(await supabase.rpc("admin_rotate_backup_token")) as string;
+  },
+
   async resetPassword(userId: string): Promise<{ temp_password: string }> {
     const { data, error } = await supabase.functions.invoke("admin-users", { body: { action: "reset_password", user_id: userId } });
     if (error) throw await functionError(error);
