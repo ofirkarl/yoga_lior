@@ -4,6 +4,7 @@ import { errorMessage } from "../lib/errors";
 import { dayKey, formatDate } from "../lib/format";
 import type { Entitlement, Profile } from "../lib/types";
 import { InstallHelpButton } from "../components/InstallGuide";
+import { PushCard } from "../admin/PushCard";
 import { Field, Loading, useToast } from "../components/ui";
 
 export function MyCard({ profile, refreshKey, onProfileSaved }: { profile: Profile; refreshKey: number; onProfileSaved: () => void }) {
@@ -92,6 +93,8 @@ export function MyCard({ profile, refreshKey, onProfileSaved }: { profile: Profi
           {saving ? "בשמירה…" : "שמירת הפרטים"}
         </button>
       </form>
+
+      <PushCard audience="member" />
 
       <div style={{ marginBottom: "1rem" }}>
         <InstallHelpButton />

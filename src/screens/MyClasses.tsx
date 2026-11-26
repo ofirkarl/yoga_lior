@@ -4,6 +4,7 @@ import { errorMessage } from "../lib/errors";
 import { formatDay, formatDeadline, formatTime } from "../lib/format";
 import type { MyBooking } from "../lib/types";
 import { Loading, Sheet, useToast } from "../components/ui";
+import { OfferBox } from "../components/OfferBox";
 
 export function MyClasses({ refreshKey }: { refreshKey: number }) {
   const toast = useToast();
@@ -15,7 +16,10 @@ export function MyClasses({ refreshKey }: { refreshKey: number }) {
   const load = useCallback(async () => {
     setError(null);
     try {
-      setRows(await api.getMyUpcomingBookings());
+      const list = await api.getMyUpcomingBookings();
+      // הצעות פעילות קודם, כדי שלא יפספסו אותן
+      const hasOffer = (b: MyBooking) => b.status === "waitlist" && !!b.offer_expires_at && new Date(b.offer_expires_at).getTime() > Date.now();
+      setRows([...list.filter(hasOffer), ...list.filter((b) => !hasOffer(b))]);
     } catch (e) {
       setError(errorMessage(e));
       setRows([]);
@@ -76,12 +80,15 @@ export function MyClasses({ refreshKey }: { refreshKey: number }) {
       ) : (
         rows.map((b) => {
           const cancelled = b.session.status === "cancelled";
+          const offer = b.status === "waitlist" && b.offer_expires_at && new Date(b.offer_expires_at).getTime() > Date.now();
           return (
             <article key={b.id} className="card class-card" aria-labelledby={`b-${b.id}`}>
               <div className="class-top">
                 <span className="class-time">{formatTime(b.session.starts_at)}</span>
                 {cancelled ? (
                   <span className="badge badge--cancelled">השיעור בוטל</span>
+                ) : offer ? (
+                  <span className="badge badge--offer">התפנה מקום</span>
                 ) : b.status === "waitlist" ? (
                   <span className="badge badge--waitlist">ברשימת ההמתנה</span>
                 ) : (
@@ -97,7 +104,17 @@ export function MyClasses({ refreshKey }: { refreshKey: number }) {
                     : <>ביטול ללא חיוב עד <strong>{formatDeadline(b.session.cancel_deadline)}</strong></>}
                 </p>
               )}
-              {!cancelled && (
+              {!cancelled && offer && (
+                <OfferBox
+                  bookingId={b.id}
+                  title={b.session.title}
+                  expiresAt={b.offer_expires_at!}
+                  open={b.offer_open}
+                  cancelDeadline={b.session.cancel_deadline}
+                  onDone={load}
+                />
+              )}
+              {!cancelled && !offer && (
                 <div className="btn-row">
                   {b.mode === "zoom" && b.status === "booked" && (
                     <button type="button" className="btn btn--primary" onClick={() => openZoom(b)}>

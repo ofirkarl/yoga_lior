@@ -302,3 +302,10 @@ button.kpi:hover { border-color: var(--primary); }
 .install-steps li { margin-bottom: .6rem; line-height: 1.6; }
 .install-note { display: block; color: var(--muted); font-size: .95rem; margin-top: .25rem; }
 .glyph { width: 1.35em; height: 1.35em; vertical-align: -0.3em; color: #0a6cff; margin-inline: .1em; }
+
+/* הצעה ממקום שהתפנה */
+.badge--offer { background: var(--ok-bg); color: var(--ok-ink); }
+.offer-box { margin-top: .75rem; padding: .85rem 1rem; border-radius: 12px; background: var(--ok-bg); border: 1px solid #b9d4c1; }
+.offer-box .btn-row { margin-top: .75rem; }
+.offer-title { margin: 0 0 .25rem; font-weight: 700; color: var(--ok-ink); }
+.offer-note { margin: .5rem 0 0; color: var(--warn-ink); font-size: .95rem; }

@@ -4,6 +4,7 @@ import { errorMessage } from "../lib/errors";
 import { dayKey, formatDay, formatDeadline, formatTime, missingText, placesLeftText } from "../lib/format";
 import type { AttendMode, ScheduleItem } from "../lib/types";
 import { Loading, Sheet, useToast } from "../components/ui";
+import { OfferBox } from "../components/OfferBox";
 
 const WEEKS_AHEAD = 4; // הרשמה עד חודש מראש
 
@@ -141,6 +142,7 @@ export function Schedule({ onChanged }: { onChanged?: () => void }) {
                 item={it}
                 onBook={(mode) => { setActionError(null); setAutoEnroll(false); setPending({ item: it, action: "book", mode }); }}
                 onCancel={() => { setActionError(null); setPending({ item: it, action: "cancel" }); }}
+                onChanged={() => { load(); onChanged?.(); }}
               />
             ))}
           </section>
@@ -187,7 +189,7 @@ export function Schedule({ onChanged }: { onChanged?: () => void }) {
   );
 }
 
-const isFull = (it: ScheduleItem) => it.booked_studio >= it.max_participants;
+const isFull = (it: ScheduleItem) => it.booked_studio + (it.held_studio ?? 0) >= it.max_participants;
 const deadlinePassed = (it: ScheduleItem) => new Date(it.cancel_deadline).getTime() < Date.now();
 
 function ConfirmBody({ pending }: { pending: Pending }) {
@@ -219,6 +221,7 @@ function ConfirmBody({ pending }: { pending: Pending }) {
       {waitlist ? (
         <p className="notice notice--info">
           השיעור מלא. כשיתפנה מקום, הראשונה בתור תקבל הודעה ושעה להירשם, ואחריה הבאה בתור.
+          כדי לקבל את ההודעה בזמן, כדאי להפעיל התראות במסך "הכרטיסייה שלי".
         </p>
       ) : (
         <p className="notice notice--info">
@@ -231,9 +234,12 @@ function ConfirmBody({ pending }: { pending: Pending }) {
   );
 }
 
-function ClassCard({ item: it, onBook, onCancel }: { item: ScheduleItem; onBook: (m: AttendMode) => void; onCancel: () => void }) {
+function ClassCard({ item: it, onBook, onCancel, onChanged }: {
+  item: ScheduleItem; onBook: (m: AttendMode) => void; onCancel: () => void; onChanged: () => void;
+}) {
   const cancelled = it.status === "cancelled";
-  const left = it.max_participants - it.booked_studio;
+  const left = it.max_participants - it.booked_studio - (it.held_studio ?? 0);
+  const offer = it.my_status === "waitlist" && it.my_offer_expires_at && it.my_booking_id;
   const total = it.booked_studio + it.booked_zoom;
   const missing = it.min_participants - total;
   const mine = it.my_status;
@@ -247,6 +253,8 @@ function ClassCard({ item: it, onBook, onCancel }: { item: ScheduleItem; onBook:
           <span className="badge badge--cancelled">השיעור בוטל</span>
         ) : mine === "booked" ? (
           <span className="badge badge--booked">{it.my_mode === "zoom" ? "ההרשמה שלך · זום" : "ההרשמה שלך"}</span>
+        ) : offer ? (
+          <span className="badge badge--offer">התפנה מקום</span>
         ) : mine === "waitlist" ? (
           <span className="badge badge--waitlist">ברשימת ההמתנה</span>
         ) : mine === "late_cancel" ? (
@@ -262,7 +270,18 @@ function ClassCard({ item: it, onBook, onCancel }: { item: ScheduleItem; onBook:
 
       {!cancelled && missing > 0 && !deadlinePassed(it) && <p className="deadline">{missingText(missing)}</p>}
 
-      {!cancelled && (mine === "booked" || mine === "waitlist") && (
+      {!cancelled && offer && (
+        <OfferBox
+          bookingId={it.my_booking_id!}
+          title={it.title}
+          expiresAt={it.my_offer_expires_at!}
+          open={it.my_offer_open}
+          cancelDeadline={it.cancel_deadline}
+          onDone={onChanged}
+        />
+      )}
+
+      {!cancelled && !offer && (mine === "booked" || mine === "waitlist") && (
         <>
           {mine === "booked" && (
             <p className="deadline">

@@ -5,8 +5,20 @@ import { disablePush, enablePush, getPushState, type PushState } from "../lib/pu
 import { useToast } from "../components/ui";
 import { InstallHelpButton } from "../components/InstallGuide";
 
-/** כרטיס בחדר הבקרה: הפעלת התראות לטלפון על הרשמות חדשות */
-export function PushCard() {
+const TEXT = {
+  admin: {
+    on: "המכשיר הזה מקבל התראה על כל הרשמה חדשה שממתינה לאישור.",
+    off: "קבלי הודעה לטלפון ברגע שמישהי חדשה נרשמת וממתינה לאישור.",
+  },
+  member: {
+    on: "המכשיר הזה יקבל הודעה כשמתפנה לך מקום בשיעור שאת ברשימת ההמתנה שלו.",
+    off: "קבלי הודעה לטלפון כשמתפנה לך מקום בשיעור מלא, כדי לא לפספס את התור.",
+  },
+};
+
+/** כרטיס הפעלת התראות לטלפון. בחדר הבקרה (מנהלת) ובכרטיסייה שלי (מתאמנת). */
+export function PushCard({ audience = "admin" }: { audience?: "admin" | "member" }) {
+  const text = TEXT[audience];
   const [state, setState] = useState<PushState | null>(null);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
@@ -63,7 +75,7 @@ export function PushCard() {
       <div className="card stack">
         {state === "on" && (
           <>
-            <p style={{ margin: 0 }}>המכשיר הזה מקבל התראה על כל הרשמה חדשה שממתינה לאישור.</p>
+            <p style={{ margin: 0 }}>{text.on}</p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button type="button" className="btn btn--secondary" onClick={test} disabled={busy}>שליחת התראת בדיקה</button>
               <button type="button" className="btn btn--ghost" onClick={turnOff} disabled={busy}>כיבוי במכשיר הזה</button>
@@ -72,7 +84,7 @@ export function PushCard() {
         )}
         {state === "off" && (
           <>
-            <p style={{ margin: 0 }}>קבלי הודעה לטלפון ברגע שמישהי חדשה נרשמת וממתינה לאישור.</p>
+            <p style={{ margin: 0 }}>{text.off}</p>
             <button type="button" className="btn btn--primary btn--block" onClick={turnOn} disabled={busy}>
               {busy ? "רגע…" : "הפעלת התראות"}
             </button>

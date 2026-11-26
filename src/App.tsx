@@ -82,8 +82,15 @@ function Gate() {
   return <Main profile={profile} onProfileSaved={loadProfile} />;
 }
 
+/** לשונית פתיחה מהקישור (לחיצה על התראה על מקום שהתפנה מובילה ל-?tab=mine) */
+function initialTab(): Tab {
+  const t = new URLSearchParams(window.location.search).get("tab");
+  if (t) window.history.replaceState(null, "", window.location.pathname + window.location.hash);
+  return TABS.some((x) => x.id === t) ? (t as Tab) : "schedule";
+}
+
 function Main({ profile, onProfileSaved }: { profile: Profile; onProfileSaved: () => void }) {
-  const [tab, setTab] = useState<Tab>("schedule");
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {

@@ -1,12 +1,13 @@
-// Edge Function: שולחת התראות Push למנהלות הסטודיו.
+// Edge Function: שולחת התראות Push. למנהלות (הרשמה חדשה) ולמתאמנות (מקום שהתפנה ברשימת ההמתנה).
 //
 // שתי דרכים לקרוא לה:
-//   1. מהטריגר בבסיס הנתונים (pg_net), עם הכותרת x-notify-secret.
+//   1. מהטריגרים בבסיס הנתונים (pg_net), עם הכותרת x-notify-secret.
 //      { "event": "new_signup", "user_id": "<uuid>" }
-//   2. מהאפליקציה, כמנהלת מחוברת, כדי לבדוק שההתראות מגיעות למכשיר שלה:
+//      { "event": "waitlist_offer", "booking_id": "<uuid>" }
+//   2. מהאפליקציה, כמשתמשת מחוברת, כדי לבדוק שההתראות מגיעות למכשיר שלה:
 //      { "event": "test" }  → נשלחת התראה רק למכשירים של מי שביקשה.
 //
-// verify_jwt כבוי כי הטריגר לא שולח JWT. כל קריאה מאומתת כאן: או בסוד, או בטוקן של מנהלת.
+// verify_jwt כבוי כי הטריגר לא שולח JWT. כל קריאה מאומתת כאן: או בסוד, או בטוקן של המשתמשת.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { sendPush, type Vapid } from "./webpush.ts";
@@ -37,6 +38,21 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
+const TZ = "Asia/Jerusalem";
+function timeText(iso: string): string {
+  return new Intl.DateTimeFormat("he-IL", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso));
+}
+/** "היום ב-18:30", "מחר ב-07:30" או "יום ראשון ב-18:30" */
+function whenText(iso: string): string {
+  const day = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(d);
+  const d = new Date(iso);
+  const today = day(new Date());
+  const tomorrow = day(new Date(Date.now() + 86_400_000));
+  const label = day(d) === today ? "היום" : day(d) === tomorrow ? "מחר"
+    : new Intl.DateTimeFormat("he-IL", { timeZone: TZ, weekday: "long" }).format(d);
+  return `${label} ב-${timeText(iso)}`;
+}
+
 interface Sub { id: string; user_id: string; endpoint: string; p256dh: string; auth: string }
 
 Deno.serve(async (req) => {
@@ -62,19 +78,48 @@ Deno.serve(async (req) => {
 
   if (secret !== null) {
     if (!safeEqual(secret, String(cfg.notify_secret))) return reply(401, { error: "bad_secret" });
-    if (body.event !== "new_signup" || typeof body.user_id !== "string") return reply(400, { error: "unknown_event" });
 
-    const { data: p } = await admin.from("profiles").select("full_name, email, status").eq("id", body.user_id).maybeSingle();
-    if (!p || p.status !== "pending") return reply(200, { sent: 0, skipped: "not_pending" });
-    const who = (p.full_name || "").trim() || p.email || "מישהי חדשה";
-    payload = {
-      title: "בקשת הצטרפות חדשה",
-      body: `${who} נרשמה לאפליקציה וממתינה לאישור שלך`,
-      url: "/?tab=members",
-      tag: `signup-${body.user_id}`,
-    };
-    const { data: admins } = await admin.from("profiles").select("id").eq("role", "admin").eq("status", "active");
-    targetUsers = (admins ?? []).map((a) => a.id);
+    if (body.event === "new_signup" && typeof body.user_id === "string") {
+      const { data: p } = await admin.from("profiles").select("full_name, email, status").eq("id", body.user_id).maybeSingle();
+      if (!p || p.status !== "pending") return reply(200, { sent: 0, skipped: "not_pending" });
+      const who = (p.full_name || "").trim() || p.email || "מישהי חדשה";
+      payload = {
+        title: "בקשת הצטרפות חדשה",
+        body: `${who} נרשמה לאפליקציה וממתינה לאישור שלך`,
+        url: "/?tab=members",
+        tag: `signup-${body.user_id}`,
+      };
+      const { data: admins } = await admin.from("profiles").select("id").eq("role", "admin").eq("status", "active");
+      targetUsers = (admins ?? []).map((a) => a.id);
+    } else if (body.event === "waitlist_offer" && typeof body.booking_id === "string") {
+      // הצעה ממקום שהתפנה: הודעה רק למתאמנת שקיבלה אותה
+      const { data: b } = await admin
+        .from("bookings")
+        .select("user_id, status, offer_expires_at, offer_open, session:class_sessions!inner(title, starts_at)")
+        .eq("id", body.booking_id)
+        .maybeSingle();
+      const s = b?.session as unknown as { title: string; starts_at: string } | undefined;
+      if (!b || !s || b.status !== "waitlist" || !b.offer_expires_at || new Date(b.offer_expires_at) <= new Date()) {
+        return reply(200, { sent: 0, skipped: "no_offer" });
+      }
+      const when = whenText(s.starts_at);
+      payload = b.offer_open
+        ? {
+          title: "התפנה מקום בשיעור",
+          body: `${s.title}, ${when}. הראשונה שמאשרת מקבלת את המקום.`,
+          url: "/?tab=mine",
+          tag: `offer-${body.booking_id}`,
+        }
+        : {
+          title: "התפנה לך מקום בשיעור",
+          body: `${s.title}, ${when}. המקום שמור לך עד ${timeText(b.offer_expires_at)}. לחצי כדי להירשם.`,
+          url: "/?tab=mine",
+          tag: `offer-${body.booking_id}`,
+        };
+      targetUsers = [b.user_id];
+    } else {
+      return reply(400, { error: "unknown_event" });
+    }
   } else {
     const auth = req.headers.get("Authorization");
     if (!auth?.startsWith("Bearer ")) return reply(401, { error: "not_signed_in" });
@@ -84,12 +129,10 @@ Deno.serve(async (req) => {
     });
     const { data: who } = await asCaller.auth.getUser();
     if (!who?.user) return reply(401, { error: "not_signed_in" });
-    const { data: isAdmin } = await asCaller.rpc("is_admin");
-    if (isAdmin !== true) return reply(403, { error: "admin_only" });
     if (body.event !== "test") return reply(400, { error: "unknown_event" });
     payload = {
       title: "ההתראות פועלות",
-      body: "מעכשיו תקבלי כאן הודעה על כל הרשמה חדשה.",
+      body: "מעכשיו תקבלי כאן הודעות מהסטודיו.",
       url: "/",
       tag: "test",
     };

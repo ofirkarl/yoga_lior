@@ -375,4 +375,106 @@ select t.ok(admin_get_backup_token() = :'tok2', 'המפתח החדש בתוקף'
 select t.ok((admin_backup_status()->>'last_at') is null, 'עוד לא היה גיבוי');
 reset role;
 
+-- ---------------------------------------------------------------------
+-- רשימת המתנה לפי תור
+-- ---------------------------------------------------------------------
+-- המתאמנת השלישית (c1) מאושרת, עם כרטיסייה והצהרה
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-00000000000a');
+select admin_set_member_status('00000000-0000-0000-0000-0000000000c1', 'active');
+select admin_record_payment('00000000-0000-0000-0000-0000000000c1', (select id from products where name = 'כרטיסייה 5'), 'cash', 375);
+select admin_record_payment('00000000-0000-0000-0000-0000000000d1', (select id from products where name = 'כרטיסייה 5'), 'cash', 375);
+select admin_record_payment('00000000-0000-0000-0000-0000000000a2', (select id from products where name = 'כרטיסייה 5'), 'cash', 375);
+select t.as_user('00000000-0000-0000-0000-0000000000c1');
+select submit_health_declaration('{"q1": false}', 'נועה');
+reset role;
+insert into class_sessions (title, starts_at, duration_min, min_participants, max_participants, zoom_enabled, cancel_deadline)
+values ('תור', now() + interval '1 day', 60, 1, 1, false, now() + interval '20 hours'),
+       ('אוטו', now() + interval '1 day', 60, 1, 1, false, now() + interval '20 hours'),
+       ('קרוב', now() + interval '20 minutes', 60, 1, 1, false, now() + interval '10 minutes');
+delete from net.requests;
+
+-- מיכל רשומה, דנה ואחריה נועה ברשימה
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-0000000000a2');
+select book_class((select id from class_sessions where title = 'תור'));
+select t.as_user('00000000-0000-0000-0000-0000000000d1');
+select book_class((select id from class_sessions where title = 'תור'));
+select t.as_user('00000000-0000-0000-0000-0000000000c1');
+select book_class((select id from class_sessions where title = 'תור'));
+-- מיכל מבטלת: המקום נשמר לדנה, הראשונה בתור
+select t.as_user('00000000-0000-0000-0000-0000000000a2');
+select cancel_booking((select b.id from bookings b join class_sessions s on s.id = b.session_id where s.title = 'תור' and b.user_id = auth.uid() and b.status = 'booked'));
+select t.as_user('00000000-0000-0000-0000-0000000000d1');
+select t.ok((select my_offer_expires_at between now() + interval '59 minutes' and now() + interval '61 minutes' and not my_offer_open
+             from get_schedule_v2(now(), now() + interval '2 days') where title = 'תור'), 'דנה קיבלה הצעה לשעה');
+select t.as_user('00000000-0000-0000-0000-0000000000c1');
+select t.ok((select held_studio = 1 and my_offer_expires_at is null from get_schedule_v2(now(), now() + interval '2 days') where title = 'תור'),
+            'נועה רואה שהמקום שמור, ואין לה הצעה');
+select t.fails($q$select accept_offer((select b.id from bookings b join class_sessions s on s.id = b.session_id where s.title = 'תור' and b.user_id = auth.uid()))$q$,
+               'offer_expired', 'אי אפשר לאשר בלי הצעה');
+select t.fails($q$select accept_offer((select b.id from bookings b join class_sessions s on s.id = b.session_id where s.title = 'תור' and b.user_id = '00000000-0000-0000-0000-0000000000d1'))$q$,
+               'not_allowed', 'אי אפשר לאשר הצעה של מישהי אחרת');
+select t.as_user('00000000-0000-0000-0000-0000000000a2');
+select t.ok((select status from book_class((select id from class_sessions where title = 'תור'))) = 'waitlist', 'המקום השמור לא פנוי להרשמה רגילה');
+select cancel_booking((select b.id from bookings b join class_sessions s on s.id = b.session_id where s.title = 'תור' and b.user_id = auth.uid() and b.status = 'waitlist'));
+reset role;
+select t.ok((select count(*) from net.requests where body->>'event' = 'waitlist_offer') = 1, 'יצאה הודעה על ההצעה');
+
+-- דנה לא ענתה בזמן: התור עובר לנועה
+update bookings set offer_expires_at = now() - interval '1 second'
+where user_id = '00000000-0000-0000-0000-0000000000d1' and session_id = (select id from class_sessions where title = 'תור');
+select process_waitlists();
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-0000000000c1');
+select t.ok((select my_offer_expires_at is not null and not my_offer_open from get_schedule_v2(now(), now() + interval '2 days') where title = 'תור'),
+            'אחרי שפג הזמן, ההצעה עוברת לבאה בתור');
+-- נועה מוותרת. כל התור כבר קיבל הזדמנות, אז ההצעה נפתחת לכל הרשימה
+select decline_offer((select b.id from bookings b join class_sessions s on s.id = b.session_id where s.title = 'תור' and b.user_id = auth.uid()));
+select t.as_user('00000000-0000-0000-0000-0000000000d1');
+select t.ok((select my_offer_open from get_schedule_v2(now(), now() + interval '2 days') where title = 'תור'), 'אחרי שכולן קיבלו הזדמנות: הצעה פתוחה');
+select t.ok((select status from accept_offer((select b.id from bookings b join class_sessions s on s.id = b.session_id where s.title = 'תור' and b.user_id = auth.uid()))) = 'booked',
+            'דנה מאשרת ונרשמת');
+select t.ok((select entitlement_id is not null from bookings b join class_sessions s on s.id = b.session_id where s.title = 'תור' and b.user_id = auth.uid() and b.status = 'booked'),
+            'ההרשמה ירדה מהכרטיסייה');
+reset role;
+
+-- כניסה אוטומטית קודמת להצעה לפי התור
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-0000000000a2');
+select book_class((select id from class_sessions where title = 'אוטו'));
+select t.as_user('00000000-0000-0000-0000-0000000000c1');
+select book_class((select id from class_sessions where title = 'אוטו'));
+select t.as_user('00000000-0000-0000-0000-0000000000d1');
+select book_class((select id from class_sessions where title = 'אוטו'), 'studio', true);
+select t.as_user('00000000-0000-0000-0000-0000000000a2');
+select cancel_booking((select b.id from bookings b join class_sessions s on s.id = b.session_id where s.title = 'אוטו' and b.user_id = auth.uid()));
+select t.as_user('00000000-0000-0000-0000-0000000000d1');
+select t.ok((select my_status = 'booked' from get_schedule_v2(now(), now() + interval '2 days') where title = 'אוטו'), 'מי שסימנה כניסה אוטומטית נכנסת מיד');
+select t.as_user('00000000-0000-0000-0000-0000000000c1');
+select t.ok((select my_status = 'waitlist' and my_offer_expires_at is null from get_schedule_v2(now(), now() + interval '2 days') where title = 'אוטו'),
+            'והאחרת נשארת ברשימה בלי הצעה');
+reset role;
+
+-- חצי שעה לפני השיעור: הודעה לכולן, הראשונה שמאשרת מקבלת
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-0000000000a2');
+select book_class((select id from class_sessions where title = 'קרוב'));
+select t.as_user('00000000-0000-0000-0000-0000000000d1');
+select book_class((select id from class_sessions where title = 'קרוב'));
+select t.as_user('00000000-0000-0000-0000-0000000000c1');
+select book_class((select id from class_sessions where title = 'קרוב'));
+select t.as_user('00000000-0000-0000-0000-0000000000a2');
+select cancel_booking((select b.id from bookings b join class_sessions s on s.id = b.session_id where s.title = 'קרוב' and b.user_id = auth.uid()));
+reset role;
+select t.ok((select count(*) from bookings b join class_sessions s on s.id = b.session_id
+             where s.title = 'קרוב' and b.status = 'waitlist' and b.offer_open and b.offer_expires_at > now()) = 2, 'סמוך לשיעור: שתיהן קיבלו הצעה פתוחה');
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-0000000000c1');
+select accept_offer((select b.id from bookings b join class_sessions s on s.id = b.session_id where s.title = 'קרוב' and b.user_id = auth.uid()));
+select t.as_user('00000000-0000-0000-0000-0000000000d1');
+select t.fails($q$select accept_offer((select b.id from bookings b join class_sessions s on s.id = b.session_id where s.title = 'קרוב' and b.user_id = auth.uid()))$q$,
+               'offer_expired', 'מי שאיחרה: המקום כבר נתפס');
+reset role;
+
 \echo 'כל הבדיקות עברו'

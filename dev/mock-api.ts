@@ -58,6 +58,7 @@ for (let d = 0; d < 35; d++) {
       cancel_deadline: deadline(s),
       booked_studio: [5, 2, 8, 0, 6, 1][i % 6], booked_zoom: [1, 0, 1, 0, 0, 0][i % 6],
       waitlist_count: i % 6 === 2 ? 1 : 0, my_booking_id: null, my_status: null, my_mode: null,
+      held_studio: 0, my_offer_expires_at: null, my_offer_open: false,
     });
   }
 }
@@ -70,6 +71,15 @@ const mark = (i: number, mode: AttendMode) => {
 };
 mark(0, "studio");
 mark(4, "zoom");
+// הדגמה: שיעור מלא שהתפנה בו מקום, שמור לדנה לשעה
+{
+  const full = sessions.find((s, i) => i > 4 && s.status === "scheduled" && s.booked_studio >= s.max_participants);
+  if (full) {
+    full.my_booking_id = `b-offer`; full.my_status = "waitlist"; full.my_mode = "studio";
+    full.booked_studio--; full.held_studio = 1;
+    full.my_offer_expires_at = new Date(Date.now() + 52 * 60_000).toISOString();
+  }
+}
 
 const ents: Entitlement[] = [
   { id: "e1", title: "כרטיסייה 10 כניסות – 6 שבועות", mode: "studio", entries_total: 10, entries_left: 3,
@@ -104,7 +114,7 @@ export const api = {
   async bookClass(id: string, mode: AttendMode, _auto = false) {
     await wait();
     const s = sessions.find((x) => x.session_id === id)!;
-    const full = mode === "studio" && s.booked_studio >= s.max_participants;
+    const full = mode === "studio" && s.booked_studio + s.held_studio >= s.max_participants;
     s.my_booking_id = `b-${id}`; s.my_mode = mode; s.my_status = full ? "waitlist" : "booked";
     if (!full) { if (mode === "studio") s.booked_studio++; else s.booked_zoom++; }
     return { status: s.my_status };
@@ -114,14 +124,26 @@ export const api = {
     const s = sessions.find((x) => x.my_booking_id === bid)!;
     const refunded = s.my_status === "booked" && new Date(s.cancel_deadline).getTime() > Date.now();
     if (s.my_status === "booked") { if (s.my_mode === "studio") s.booked_studio--; else s.booked_zoom--; }
+    if (s.my_offer_expires_at) { s.held_studio--; s.my_offer_expires_at = null; }
     s.my_booking_id = null; s.my_status = null; s.my_mode = null;
     return { new_status: "cancelled", refunded };
+  },
+  async acceptOffer(bid: string) {
+    await wait();
+    const s = sessions.find((x) => x.my_booking_id === bid)!;
+    s.held_studio--; s.booked_studio++; s.my_status = "booked"; s.my_offer_expires_at = null;
+  },
+  async declineOffer(bid: string) {
+    await wait();
+    const s = sessions.find((x) => x.my_booking_id === bid)!;
+    s.held_studio--; s.my_status = null; s.my_booking_id = null; s.my_mode = null; s.my_offer_expires_at = null;
   },
   async getMyEntitlements() { await wait(); return ents.map((e) => ({ ...e })); },
   async getMyUpcomingBookings(): Promise<MyBooking[]> {
     await wait();
     return sessions.filter((s) => s.my_status === "booked" || s.my_status === "waitlist").map((s) => ({
       id: s.my_booking_id!, status: s.my_status!, mode: s.my_mode!,
+      offer_expires_at: s.my_offer_expires_at, offer_open: s.my_offer_open,
       session: { id: s.session_id, title: s.title, starts_at: s.starts_at, duration_min: s.duration_min, cancel_deadline: s.cancel_deadline, status: s.status },
     }));
   },

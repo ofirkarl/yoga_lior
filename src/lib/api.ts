@@ -84,7 +84,7 @@ export const api = {
 
   async getSchedule(from: Date, to: Date): Promise<ScheduleItem[]> {
     return must(
-      await supabase.rpc("get_schedule", { p_from: from.toISOString(), p_to: to.toISOString() }),
+      await supabase.rpc("get_schedule_v2", { p_from: from.toISOString(), p_to: to.toISOString() }),
     ) as ScheduleItem[];
   },
 
@@ -100,6 +100,14 @@ export const api = {
     return rows[0];
   },
 
+  async acceptOffer(bookingId: string): Promise<void> {
+    must(await supabase.rpc("accept_offer", { p_booking: bookingId }));
+  },
+
+  async declineOffer(bookingId: string): Promise<void> {
+    must(await supabase.rpc("decline_offer", { p_booking: bookingId }));
+  },
+
   async getMyEntitlements(): Promise<Entitlement[]> {
     return must(
       await supabase
@@ -113,7 +121,7 @@ export const api = {
     const rows = must(
       await supabase
         .from("bookings")
-        .select("id, status, mode, session:class_sessions!inner(id, title, starts_at, duration_min, cancel_deadline, status)")
+        .select("id, status, mode, offer_expires_at, offer_open, session:class_sessions!inner(id, title, starts_at, duration_min, cancel_deadline, status)")
         .in("status", ["booked", "waitlist"])
         .gte("session.starts_at", new Date().toISOString()),
     ) as unknown as MyBooking[];

@@ -30,6 +30,11 @@ export interface ScheduleItem {
   my_booking_id: string | null;
   my_status: BookingStatus | null;
   my_mode: AttendMode | null;
+  /** מקומות ששמורים כרגע להצעה בתור. נחשבים תפוסים */
+  held_studio: number;
+  /** הצעה פעילה אליי ממקום שהתפנה */
+  my_offer_expires_at: string | null;
+  my_offer_open: boolean;
 }
 
 export interface Entitlement {
@@ -47,6 +52,8 @@ export interface MyBooking {
   id: string;
   status: BookingStatus;
   mode: AttendMode;
+  offer_expires_at: string | null;
+  offer_open: boolean;
   session: {
     id: string;
     title: string;
