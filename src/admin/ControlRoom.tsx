@@ -7,6 +7,7 @@ import {
 import type { ActivityItem, Dashboard, DashboardSession } from "../lib/types";
 import { Loading } from "../components/ui";
 import { PushCard } from "./PushCard";
+import { PendingOrders } from "./PendingOrders";
 import { BackupCard } from "./BackupCard";
 
 export type AdminTab = "room" | "members" | "classes";
@@ -76,7 +77,7 @@ export function ControlRoom({ name, go }: { name: string; go: (t: AdminTab) => v
             {d.pending.length > 0 && (
               <li className="alert-item alert-item--info">
                 <span>
-                  <strong>{d.pending.length === 1 ? "מתעניינת אחת ממתינה לאישור" : `${d.pending.length} מתעניינות ממתינות לאישור`}</strong>
+                  <strong>{d.pending.length === 1 ? "בקשת הצטרפות אחת ממתינה לאישור" : `${d.pending.length} בקשות הצטרפות ממתינות לאישור`}</strong>
                   <button type="button" className="link-btn" style={{ background: "none", border: 0, padding: 0, color: "var(--primary)", font: "inherit", fontWeight: 600, cursor: "pointer", minHeight: 44 }} onClick={() => go("members")}>
                     למעבר לאישור
                   </button>
@@ -87,13 +88,15 @@ export function ControlRoom({ name, go }: { name: string; go: (t: AdminTab) => v
         </section>
       )}
 
+      <PendingOrders onChanged={load} />
+
       <PushCard />
 
       {/* מספרים */}
       <section aria-labelledby="kpis">
         <h2 id="kpis" className="visually-hidden">מספרים עיקריים</h2>
         <div className="kpi-grid">
-          <Kpi value={String(k.active_members)} label="מתאמנות פעילות" onClick={() => go("members")} />
+          <Kpi value={String(k.active_members)} label="מתאמנים פעילים" onClick={() => go("members")} />
           <Kpi value={String(k.pending_members)} label="ממתינות לאישור" alert={k.pending_members > 0} onClick={() => go("members")} />
           <Kpi value={String(k.active_cards)} label="כרטיסיות בתוקף" />
           <Kpi value={formatMoney(k.revenue_month)} label="הכנסות החודש" />
@@ -196,7 +199,7 @@ function WeekRow({ s }: { s: DashboardSession }) {
           </div>
           {(lowNow || s.waitlist > 0) && (
             <p className="row-sub">
-              {lowNow && `חסרות ${s.min - total} למינימום`}
+              {lowNow && `עוד ${s.min - total} למינימום`}
               {lowNow && s.waitlist > 0 && " · "}
               {s.waitlist > 0 && `${s.waitlist} ברשימת המתנה`}
             </p>
@@ -230,12 +233,12 @@ function FeedItem({ a }: { a: ActivityItem }) {
   let text: string;
   let dot = "";
   switch (a.kind) {
-    case "booked": text = `${a.who} נרשמה ל${a.what}, ${formatShortWhen(a.when)}${a.mode === "zoom" ? " (זום)" : ""}`; break;
-    case "waitlist": text = `${a.who} נכנסה לרשימת ההמתנה ל${a.what}, ${formatShortWhen(a.when)}`; break;
-    case "cancelled": text = `${a.who} ביטלה את ${a.what}, ${formatShortWhen(a.when)}`; dot = " feed-dot--cancel"; break;
-    case "late_cancel": text = `${a.who} ביטלה מאוחר את ${a.what}, ${formatShortWhen(a.when)} (הכניסה נוכתה)`; dot = " feed-dot--cancel"; break;
-    case "payment": text = `${a.who} שילמה ${formatMoney(a.amount)} ב${METHOD_LABEL[a.method] ?? a.method}${a.what ? ` · ${a.what}` : ""}`; dot = " feed-dot--pay"; break;
-    case "joined": text = `${a.who || "מתאמנת חדשה"} הצטרפה לאפליקציה`; break;
+    case "booked": text = `${a.who}: הרשמה ל${a.what}, ${formatShortWhen(a.when)}${a.mode === "zoom" ? " (זום)" : ""}`; break;
+    case "waitlist": text = `${a.who}: רשימת המתנה ל${a.what}, ${formatShortWhen(a.when)}`; break;
+    case "cancelled": text = `${a.who}: ביטול ${a.what}, ${formatShortWhen(a.when)}`; dot = " feed-dot--cancel"; break;
+    case "late_cancel": text = `${a.who}: ביטול מאוחר ${a.what}, ${formatShortWhen(a.when)} (הכניסה נוכתה)`; dot = " feed-dot--cancel"; break;
+    case "payment": text = `${a.who}: תשלום ${formatMoney(a.amount)} ב${METHOD_LABEL[a.method] ?? a.method}${a.what ? ` · ${a.what}` : ""}`; dot = " feed-dot--pay"; break;
+    case "joined": text = `הצטרפות חדשה: ${a.who || "ללא שם"}`; break;
   }
   return (
     <li>

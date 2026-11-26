@@ -48,6 +48,38 @@ export interface Entitlement {
   status: "active" | "used_up" | "expired" | "cancelled";
 }
 
+export interface ShopProduct {
+  id: string;
+  name: string;
+  kind: "trial" | "single" | "punch" | "membership";
+  mode: AttendMode;
+  price_ils: number;
+  entries: number | null;
+  validity_days: number;
+  available: boolean;
+  pending_order: string | null;
+}
+
+export interface Order {
+  id: string;
+  title: string;
+  amount_ils: number;
+  status: "pending" | "paid" | "cancelled";
+  payment_url: string | null;
+  created_at: string;
+  paid_at: string | null;
+}
+
+export interface PendingOrder {
+  id: string;
+  user_id: string;
+  full_name: string;
+  phone: string | null;
+  title: string;
+  amount_ils: number;
+  created_at: string;
+}
+
 export interface MyBooking {
   id: string;
   status: BookingStatus;

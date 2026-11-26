@@ -3,6 +3,7 @@ import { api } from "../lib/api";
 import { errorMessage } from "../lib/errors";
 import { dayKey, formatDate, formatMoney, METHOD_LABEL } from "../lib/format";
 import type { Entitlement, HealthAnswers, Member, PaymentMethod, Product } from "../lib/types";
+import { ShareCredentials } from "./ShareCredentials";
 import { Field, Loading, Sheet, useAsk, useToast } from "../components/ui";
 import { downloadCsv, membersCsv, Migration } from "./Migration";
 
@@ -45,7 +46,7 @@ export function Members() {
   async function setStatus(m: Member, status: "active" | "blocked") {
     try {
       await api.setMemberStatus(m.id, status);
-      toast(status === "active" ? `${m.full_name || "המתאמנת"} אושרה.` : `${m.full_name || "המתאמנת"} נחסמה.`);
+      toast(status === "active" ? `החשבון של ${m.full_name || "המתאמן"} אושר.` : `החשבון של ${m.full_name || "המתאמן"} נחסם.`);
       await load();
     } catch (e) {
       toast(errorMessage(e));
@@ -55,7 +56,7 @@ export function Members() {
   return (
     <main id="main" className="page">
       <div className="page-header">
-        <h1>מתאמנות</h1>
+        <h1>מתאמנים</h1>
         <p>{members ? `${active.length} פעילות${pending.length ? ` · ${pending.length} ממתינות` : ""}` : " "}</p>
       </div>
 
@@ -66,7 +67,7 @@ export function Members() {
       </div>
 
       <div className="btn-row" style={{ marginTop: 0 }}>
-        <button type="button" className="btn btn--secondary" onClick={() => setCreating(true)}>מתאמנת חדשה בלי Google</button>
+        <button type="button" className="btn btn--secondary" onClick={() => setCreating(true)}>חשבון חדש בלי Google</button>
         <button type="button" className="btn btn--secondary" onClick={() => setMigrating(true)}>העברת יתרות מארבוקס</button>
         <button type="button" className="btn btn--ghost" disabled={!members?.length}
                 onClick={() => downloadCsv(`yoga-lior-backup-${new Date().toISOString().slice(0, 10)}.csv`, membersCsv(members ?? []))}>
@@ -99,7 +100,7 @@ export function Members() {
           <section aria-labelledby="act">
             <div className="section-title"><h2 id="act">פעילות</h2></div>
             <div className="card">
-              {active.length === 0 ? <p className="empty">{q ? "לא נמצאו מתאמנות." : "עוד אין מתאמנות פעילות."}</p> : (
+              {active.length === 0 ? <p className="empty">{q ? "לא נמצאו תוצאות." : "עוד אין מתאמנים פעילים."}</p> : (
                 <ul className="row-list">
                   {active.map((m) => {
                     const cards = activeCards(m);
@@ -137,7 +138,7 @@ export function Members() {
         </>
       )}
 
-      <Sheet open={!!open} onClose={() => setOpenId(null)} title={open?.full_name || open?.username || "מתאמנת"}>
+      <Sheet open={!!open} onClose={() => setOpenId(null)} title={open?.full_name || open?.username || "מתאמן"}>
         {open && <MemberDetail m={open} products={products} onChanged={load} onStatus={(s) => setStatus(open, s)} />}
         <button type="button" className="btn btn--ghost btn--block" style={{ marginTop: "1rem" }} onClick={() => setOpenId(null)}>סגירה</button>
       </Sheet>
@@ -147,7 +148,7 @@ export function Members() {
         <button type="button" className="btn btn--ghost btn--block" style={{ marginTop: "1rem" }} onClick={() => setMigrating(false)}>סגירה</button>
       </Sheet>
 
-      <Sheet open={creating} onClose={() => setCreating(false)} title="מתאמנת חדשה בלי Google">
+      <Sheet open={creating} onClose={() => setCreating(false)} title="חשבון חדש בלי Google">
         {creating && <CreateUser onDone={load} onClose={() => setCreating(false)} />}
       </Sheet>
     </main>
@@ -208,7 +209,7 @@ function MemberDetail({ m, products, onChanged, onStatus }: {
   }
 
   async function reset() {
-    if (!(await ask({ title: "איפוס סיסמה", message: "המתאמנת תנותק מכל המכשירים ותקבל סיסמה זמנית חדשה.", confirm: "איפוס" }))) return;
+    if (!(await ask({ title: "איפוס סיסמה", message: "החשבון ינותק מכל המכשירים, ותיווצר סיסמה זמנית חדשה.", confirm: "איפוס" }))) return;
     try {
       setTempPw((await api.resetPassword(m.id)).temp_password);
     } catch (err) {
@@ -284,6 +285,7 @@ function MemberDetail({ m, products, onChanged, onStatus }: {
         <div className="notice notice--info">
           <p>סיסמה זמנית חדשה. כדאי להעביר אותה עכשיו, היא לא תוצג שוב:</p>
           <p className="secret">{tempPw}</p>
+          {m.username && <ShareCredentials kind="reset" name={m.full_name} username={m.username} password={tempPw} phone={m.phone} />}
         </div>
       )}
 
@@ -347,7 +349,8 @@ function CreateUser({ onDone, onClose }: { onDone: () => Promise<void>; onClose:
         <p className="secret">{result.username}</p>
         <p>סיסמה זמנית:</p>
         <p className="secret">{result.temp_password}</p>
-        <p className="row-sub">בכניסה הראשונה המתאמנת תתבקש לבחור סיסמה משלה.</p>
+        <ShareCredentials kind="new" name={fullName} username={result.username} password={result.temp_password} phone={phone.trim() || null} />
+        <p className="row-sub">בכניסה הראשונה בוחרים סיסמה חדשה.</p>
         <button type="button" className="btn btn--primary btn--block" onClick={onClose}>סיום</button>
       </div>
     );

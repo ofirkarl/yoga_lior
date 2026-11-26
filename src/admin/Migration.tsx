@@ -42,7 +42,7 @@ export function Migration({ members, onChanged }: { members: Member[]; onChanged
     setBusy(true);
     try {
       const r = await api.importBalances(good.map((g) => g.row));
-      toast(`נוספו ${r.inserted} יתרות. ${r.claimed ? `${r.claimed} נקשרו מיד למתאמנות שכבר באפליקציה.` : ""}`);
+      toast(`נוספו ${r.inserted} יתרות. ${r.claimed ? `${r.claimed} נקשרו מיד לחשבונות שכבר באפליקציה.` : ""}`);
       setText("");
       await Promise.all([load(), onChanged()]);
     } catch (e) {
@@ -54,10 +54,10 @@ export function Migration({ members, onChanged }: { members: Member[]; onChanged
 
   async function claim(b: ImportedBalance, userId: string) {
     const m = members.find((x) => x.id === userId);
-    if (!(await ask({ title: "שיוך יתרה", message: `${b.entries_left} כניסות, בתוקף עד ${formatDate(b.valid_until)}, יעברו ל${m?.full_name ?? "המתאמנת"}.`, confirm: "שיוך" }))) return;
+    if (!(await ask({ title: "שיוך יתרה", message: `${b.entries_left} כניסות, בתוקף עד ${formatDate(b.valid_until)}, יעברו ל${m?.full_name ?? "החשבון שנבחר"}.`, confirm: "שיוך" }))) return;
     try {
       await api.claimBalance(b.id, userId);
-      toast(`היתרה שויכה ל${m?.full_name ?? "המתאמנת"}.`);
+      toast(`היתרה שויכה ל${m?.full_name ?? "החשבון שנבחר"}.`);
       await Promise.all([load(), onChanged()]);
     } catch (e) {
       toast(errorMessage(e));
@@ -72,12 +72,12 @@ export function Migration({ members, onChanged }: { members: Member[]; onChanged
   return (
     <div className="stack">
       <p>
-        מעתיקים מארבוקס או מהמחברת שורה לכל מתאמנת: <strong>שם, אימייל או טלפון, כניסות שנשארו, תוקף</strong>.
+        מעתיקים מארבוקס או מהמחברת שורה לכל מתאמן: <strong>שם, אימייל או טלפון, כניסות שנשארו, תוקף</strong>.
         אפשר להדביק ישר מאקסל.
       </p>
       <p className="row-sub">
         מי שמצטרפת עם Google באותו אימייל מקבלת את היתרה לבד ברגע האישור. התאמה לפי טלפון או שם מוצעת כאן, ואת מאשרת אותה,
-        כי טלפון כל אחת יכולה להקליד.
+        כי טלפון כל אחד יכול להקליד.
       </p>
       <Field label="רשימת היתרות" hint="לדוגמה: דנה כהן, dana@gmail.com, 3, 15/01/2027">
         {({ id, describedBy }) => (
@@ -116,9 +116,9 @@ export function Migration({ members, onChanged }: { members: Member[]; onChanged
                 <p className="row-sub">{b.email ?? b.phone}{s && ` · נראה כמו ${s.full_name}`}</p>
                 <div className="btn-row" style={{ alignItems: "flex-end" }}>
                   <div className="field" style={{ flex: "2 1 12rem" }}>
-                    <label htmlFor={`pick-${b.id}`} className="visually-hidden">שיוך של {b.full_name} למתאמנת</label>
+                    <label htmlFor={`pick-${b.id}`} className="visually-hidden">שיוך של {b.full_name} לחשבון</label>
                     <select id={`pick-${b.id}`} className="select" value={chosen} onChange={(e) => setPick((p) => ({ ...p, [b.id]: e.target.value }))}>
-                      <option value="">בחירת מתאמנת…</option>
+                      <option value="">בחירת חשבון…</option>
                       {active.map((m) => <option key={m.id} value={m.id}>{m.full_name || m.username}</option>)}
                     </select>
                   </div>
@@ -130,7 +130,7 @@ export function Migration({ members, onChanged }: { members: Member[]; onChanged
           })}
         </ul>
       )}
-      {done.length > 0 && <p className="row-sub">{done.length} יתרות כבר עברו למתאמנות.</p>}
+      {done.length > 0 && <p className="row-sub">{done.length} יתרות כבר שויכו.</p>}
     </div>
   );
 }

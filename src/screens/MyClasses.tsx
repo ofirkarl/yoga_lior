@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { api } from "../lib/api";
 import { errorMessage } from "../lib/errors";
-import { formatDay, formatDeadline, formatTime } from "../lib/format";
+import { dayKey, formatDay, formatDeadline, formatTime } from "../lib/format";
 import type { MyBooking } from "../lib/types";
 import { Loading, Sheet, useToast } from "../components/ui";
 import { OfferBox } from "../components/OfferBox";
 
-export function MyClasses({ refreshKey }: { refreshKey: number }) {
+export function MyClasses({ refreshKey, onChanged, balance }: { refreshKey: number; onChanged?: () => void; balance?: ReactNode }) {
   const toast = useToast();
   const [rows, setRows] = useState<MyBooking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -50,11 +50,10 @@ export function MyClasses({ refreshKey }: { refreshKey: number }) {
     setBusy(true);
     try {
       const res = await api.cancelBooking(cancelling.id);
-      toast(res.refunded || cancelling.status === "waitlist"
-        ? "ההרשמה בוטלה, והכניסה חזרה לכרטיסייה."
-        : "ההרשמה בוטלה. הכניסה לא חזרה כי מועד הביטול ללא חיוב עבר.");
+      toast(cancelling.status === "waitlist" ? "יצאת מרשימת ההמתנה." : res.refunded ? "ההרשמה בוטלה, והכניסה חזרה לכרטיסייה." : "ההרשמה בוטלה.");
       setCancelling(null);
       await load();
+      onChanged?.();
     } catch (e) {
       toast(errorMessage(e));
     } finally {
@@ -62,13 +61,21 @@ export function MyClasses({ refreshKey }: { refreshKey: number }) {
     }
   }
 
+  // קיבוץ לפי יום, בסדר שהשרת החזיר (הצעות פעילות קודם)
+  const groups: [string, MyBooking[]][] = [];
+  for (const b of rows ?? []) {
+    const k = dayKey(b.session.starts_at);
+    const g = groups.find(([key]) => key === k);
+    if (g) g[1].push(b); else groups.push([k, [b]]);
+  }
+
   const late = cancelling && cancelling.status === "booked" && new Date(cancelling.session.cancel_deadline).getTime() < Date.now();
 
   return (
     <main id="main" className="page">
-      <div className="page-header">
+      <div className="page-header page-header--row">
         <h1>השיעורים שלי</h1>
-        <p>השיעורים הקרובים שנרשמת אליהם.</p>
+        {balance}
       </div>
 
       {error && <p className="notice notice--error" role="alert">{error}</p>}
@@ -78,76 +85,90 @@ export function MyClasses({ refreshKey }: { refreshKey: number }) {
       ) : rows.length === 0 ? (
         <p className="empty">אין כרגע שיעורים קרובים. אפשר להירשם בלוח השיעורים.</p>
       ) : (
-        rows.map((b) => {
-          const cancelled = b.session.status === "cancelled";
-          const offer = b.status === "waitlist" && b.offer_expires_at && new Date(b.offer_expires_at).getTime() > Date.now();
-          return (
-            <article key={b.id} className="card class-card" aria-labelledby={`b-${b.id}`}>
-              <div className="class-top">
-                <span className="class-time">{formatTime(b.session.starts_at)}</span>
-                {cancelled ? (
-                  <span className="badge badge--cancelled">השיעור בוטל</span>
-                ) : offer ? (
-                  <span className="badge badge--offer">התפנה מקום</span>
-                ) : b.status === "waitlist" ? (
-                  <span className="badge badge--waitlist">ברשימת ההמתנה</span>
-                ) : (
-                  <span className="badge badge--booked">{b.mode === "zoom" ? "בזום" : "בסטודיו"}</span>
-                )}
-              </div>
-              <h2 className="class-title" id={`b-${b.id}`}>{b.session.title}</h2>
-              <p className="class-meta">{formatDay(b.session.starts_at)}</p>
-              {!cancelled && b.status === "booked" && (
-                <p className="deadline">
-                  {new Date(b.session.cancel_deadline).getTime() < Date.now()
-                    ? "מועד הביטול ללא חיוב עבר"
-                    : <>ביטול ללא חיוב עד <strong>{formatDeadline(b.session.cancel_deadline)}</strong></>}
-                </p>
-              )}
-              {!cancelled && offer && (
-                <OfferBox
-                  bookingId={b.id}
-                  title={b.session.title}
-                  expiresAt={b.offer_expires_at!}
-                  open={b.offer_open}
-                  cancelDeadline={b.session.cancel_deadline}
-                  onDone={load}
-                />
-              )}
-              {!cancelled && !offer && (
-                <div className="btn-row">
-                  {b.mode === "zoom" && b.status === "booked" && (
-                    <button type="button" className="btn btn--primary" onClick={() => openZoom(b)}>
-                      כניסה לשיעור בזום
-                    </button>
-                  )}
-                  <button type="button" className="btn btn--secondary" onClick={() => setCancelling(b)}>
-                    {b.status === "waitlist" ? "יציאה מרשימת ההמתנה" : "ביטול הרשמה"}
-                    <span className="visually-hidden"> ל{b.session.title}</span>
-                  </button>
-                </div>
-              )}
-            </article>
-          );
-        })
+        groups.map(([k, list]) => (
+          <section key={k} className="day" aria-labelledby={`my-day-${k}`}>
+            <h2 className="day-heading" id={`my-day-${k}`}>{formatDay(list[0].session.starts_at)}</h2>
+            <ol className="timeline">
+              {list.map((b) => {
+                const cancelled = b.session.status === "cancelled";
+                const offer = b.status === "waitlist" && !!b.offer_expires_at && new Date(b.offer_expires_at).getTime() > Date.now();
+                const state = cancelled ? "cancelled" : offer ? "offer" : b.status === "waitlist" ? "waitlist" : "booked";
+                const end = formatTime(new Date(new Date(b.session.starts_at).getTime() + b.session.duration_min * 60_000).toISOString());
+                return (
+                  <li key={b.id}>
+                    <article className={`slot slot--${state}`} aria-labelledby={`b-${b.id}`}>
+                      <div className="slot-time">
+                        <span className="slot-start">{formatTime(b.session.starts_at)}</span>
+                        <span className="slot-end"><span className="visually-hidden">עד </span>{end}</span>
+                      </div>
+                      <div className="slot-rail" aria-hidden="true"><span className="slot-node" /></div>
+                      <div className="slot-body">
+                        <div className="slot-head">
+                          <h3 className="slot-title" id={`b-${b.id}`}>{b.session.title}</h3>
+                          {cancelled ? <span className="tag tag--muted">השיעור בוטל</span>
+                            : offer ? <span className="tag tag--attention">התפנה מקום</span>
+                            : b.status === "waitlist" ? <span className="tag tag--quiet">ברשימת ההמתנה</span>
+                            : <span className="tag tag--mine">{b.mode === "zoom" ? "בזום" : "בסטודיו"}</span>}
+                        </div>
+
+                        {!cancelled && offer && (
+                          <OfferBox
+                            bookingId={b.id}
+                            title={b.session.title}
+                            expiresAt={b.offer_expires_at!}
+                            open={b.offer_open}
+                            cancelDeadline={b.session.cancel_deadline}
+                            onDone={() => { load(); onChanged?.(); }}
+                          />
+                        )}
+
+                        {!cancelled && !offer && (
+                          <div className="slot-actions">
+                            {b.mode === "zoom" && b.status === "booked" && (
+                              <button type="button" className="btn btn--sm btn--primary" onClick={() => openZoom(b)}>
+                                כניסה לזום
+                              </button>
+                            )}
+                            {b.status === "booked" && (
+                              <span className="slot-note">
+                                {new Date(b.session.cancel_deadline).getTime() < Date.now()
+                                  ? "מועד הביטול ללא חיוב עבר"
+                                  : <>ביטול ללא חיוב עד {formatDeadline(b.session.cancel_deadline)}</>}
+                              </span>
+                            )}
+                            <button type="button" className="text-btn" onClick={() => setCancelling(b)}>
+                              {b.status === "waitlist" ? "יציאה מהרשימה" : "ביטול"}
+                              <span className="visually-hidden"> של {b.session.title}</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </article>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        ))
       )}
 
-      <Sheet open={!!cancelling} onClose={() => !busy && setCancelling(null)} title="ביטול הרשמה">
+      <Sheet open={!!cancelling} onClose={() => !busy && setCancelling(null)} title={cancelling?.status === "waitlist" ? "יציאה מרשימת ההמתנה" : "ביטול הרשמה"}>
         {cancelling && (
           <>
-            <p><strong>{cancelling.session.title}</strong><br />{formatDay(cancelling.session.starts_at)}, {formatTime(cancelling.session.starts_at)}</p>
-            {cancelling.status === "waitlist" ? (
-              <p>היציאה מרשימת ההמתנה לא משפיעה על הכרטיסייה.</p>
-            ) : late ? (
-              <p className="notice notice--warn">מועד הביטול ללא חיוב עבר, ולכן הכניסה לא תחזור לכרטיסייה.</p>
-            ) : (
-              <p className="notice notice--ok">הביטול בזמן, והכניסה תחזור לכרטיסייה.</p>
-            )}
+            <div className="confirm-head">
+              <p className="confirm-title">{cancelling.session.title}</p>
+              <p className="confirm-when">{formatDay(cancelling.session.starts_at)}, {formatTime(cancelling.session.starts_at)}</p>
+            </div>
+            <p className="quiet">
+              {cancelling.status === "waitlist"
+                ? "היציאה מהרשימה לא משפיעה על הכרטיסייה."
+                : late ? "מועד הביטול ללא חיוב עבר, לכן הכניסה לא תחזור לכרטיסייה." : "הכניסה תחזור לכרטיסייה."}
+            </p>
           </>
         )}
         <div className="btn-row">
           <button type="button" className="btn btn--danger" onClick={confirmCancel} disabled={busy}>
-            {busy ? "רגע…" : "ביטול ההרשמה"}
+            {busy ? "רגע…" : cancelling?.status === "waitlist" ? "יציאה מהרשימה" : "ביטול ההרשמה"}
           </button>
           <button type="button" className="btn btn--ghost" onClick={() => setCancelling(null)} disabled={busy}>חזרה</button>
         </div>

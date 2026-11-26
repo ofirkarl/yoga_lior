@@ -1,12 +1,12 @@
 /* עיצוב משותף לדפים הסטטיים (דף הבית ומדיניות הפרטיות). אותם צבעים כמו באפליקציה. */
 :root {
-  --bg: #f6f1e9;
-  --surface: #fffdf9;
-  --ink: #1f2a24;
-  --muted: #545f58;
-  --line: #ddd3c3;
-  --primary: #3f5a4a;
-  --accent: #9c4a28;
+  --bg: #f2f3ef;
+  --surface: #ffffff;
+  --ink: #17211d;
+  --muted: #56615b;
+  --line: #dde1db;
+  --primary: #2c5a4b;
+  --accent: #8a5a0b;
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }

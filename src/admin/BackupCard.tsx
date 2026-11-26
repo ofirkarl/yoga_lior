@@ -50,7 +50,7 @@ export function BackupCard() {
     setBusy(true);
     try {
       setToken(await api.rotateBackupToken());
-      toast("המפתח הוחלף. העתיקי את הקוד החדש לסקריפט.");
+      toast("המפתח הוחלף. עכשיו צריך להעתיק את הקוד החדש לסקריפט.");
     } catch (e) {
       toast(errorMessage(e));
     } finally {
@@ -82,10 +82,10 @@ export function BackupCard() {
         <div className="stack">
           <p style={{ margin: 0 }}>עדיף לעשות את זה במחשב. הגיבוי רץ בחשבון הגוגל שלך ונשמר בדרייב שלך, כך שהוא לא תלוי באפליקציה.</p>
           <ol className="install-steps">
-            <li>פתחי את <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener noreferrer">script.google.com</a> עם חשבון הגוגל שלך. ייפתח פרויקט חדש.</li>
-            <li>מחקי את מה שכתוב שם, והדביקי את הקוד (כפתור ההעתקה למטה).</li>
-            <li>שמרי (Ctrl+S). למעלה, ליד "הפעלה", בחרי את הפונקציה <b dir="ltr">setup</b> ולחצי <b>הפעלה</b>.</li>
-            <li>גוגל תבקש אישור, ותזהיר שהאפליקציה לא מאומתת, כי זה סקריפט שלך. לחצי "מתקדם", ואז "מעבר אל…", ואז "אישור".</li>
+            <li>לפתוח את <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener noreferrer">script.google.com</a> עם חשבון הגוגל שלך. ייפתח פרויקט חדש.</li>
+            <li>למחוק את מה שכתוב שם ולהדביק את הקוד (כפתור ההעתקה למטה).</li>
+            <li>לשמור (Ctrl+S). למעלה, ליד "הפעלה", לבחור את הפונקציה <b dir="ltr">setup</b> וללחוץ <b>הפעלה</b>.</li>
+            <li>גוגל תבקש אישור, ותזהיר שהאפליקציה לא מאומתת, כי זה סקריפט שלך. ללחוץ "מתקדם", ואז "מעבר אל…", ואז "אישור".</li>
             <li>זהו. בדרייב נוצרה התיקייה "גיבויים · יוגה עם ליאור" עם הגיבוי הראשון. מעכשיו הגיבוי ירוץ כל מוצאי שבת.</li>
           </ol>
 

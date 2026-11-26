@@ -1,20 +1,23 @@
-/* יוגה עם ליאור – אינטימי, קבוצה קטנה, יחס אישי.
-   נייר חם, ירוק מרווה כהה, נגיעת טרקוטה. כל זוג צבעים עומד ב-WCAG AA. */
+/* יוגה עם ליאור: שקט, מדויק, הרבה אוויר.
+   אבן בהירה, ירוק אקליפטוס עמוק, וזעפרן עמום רק למה שדורש תשומת לב.
+   כל זוג צבעים עומד ב-WCAG AA. */
 :root {
-  --bg: #f6f1e9;
-  --surface: #fffdf9;
-  --ink: #1f2a24;          /* 13.2:1 על הרקע */
-  --muted: #545f58;        /* 5.9:1 על הרקע */
-  --line: #ddd3c3;
-  --primary: #3f5a4a;      /* טקסט לבן: 7.6:1 */
-  --primary-soft: #e4ebe5;
-  --accent: #9c4a28;       /* 6.1:1 על לבן */
-  --warn-bg: #fbeadd;
-  --warn-ink: #6e3317;
-  --ok-bg: #e3efe6;
-  --ok-ink: #235238;
+  --bg: #f2f3ef;
+  --surface: #ffffff;
+  --ink: #17211d;          /* 15:1 על הרקע */
+  --muted: #56615b;        /* 5.9:1 על הרקע */
+  --faint: #9aa39d;        /* קישוט בלבד, לא טקסט */
+  --line: #dde1db;
+  --primary: #2c5a4b;      /* טקסט לבן: 7.6:1 */
+  --primary-hover: #234a3d;
+  --primary-soft: #e3ece7;
+  --accent: #a8701a;
+  --warn-bg: #f7ecd6;
+  --warn-ink: #6b4508;     /* 7.4:1 על warn-bg */
+  --ok-bg: #e3ece7;
+  --ok-ink: #1f4a3c;
   --danger: #a3261f;
-  --focus: #1f2a24;
+  --focus: #17211d;
   --radius: 14px;
   --tap: 52px;
   --tabbar: 72px;
@@ -27,7 +30,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: system-ui, -apple-system, "Segoe UI", "Arial Hebrew", Arial, sans-serif;
+  font-family: Assistant, system-ui, -apple-system, "Segoe UI", "Arial Hebrew", Arial, sans-serif;
   font-size: 18px;
   line-height: 1.55;
 }
@@ -87,7 +90,7 @@ a { color: var(--primary); text-underline-offset: 3px; }
 }
 .btn[disabled] { opacity: .55; cursor: not-allowed; }
 .btn--primary { background: var(--primary); color: #fff; }
-.btn--primary:hover:not([disabled]) { background: #34493d; }
+.btn--primary:hover:not([disabled]) { background: var(--primary-hover); }
 .btn--secondary { background: var(--surface); color: var(--primary); border-color: var(--primary); }
 .btn--secondary:hover:not([disabled]) { background: var(--primary-soft); }
 .btn--ghost { background: transparent; color: var(--ink); border-color: var(--line); }
@@ -112,7 +115,7 @@ a { color: var(--primary); text-underline-offset: 3px; }
 .input, .textarea {
   font: inherit; color: var(--ink); background: #fff;
   min-height: var(--tap); padding: .65rem .85rem;
-  border: 2px solid #8b8478; border-radius: 12px; width: 100%;
+  border: 2px solid #8a938d; border-radius: 12px; width: 100%;
 }
 .textarea { min-height: 5.5rem; resize: vertical; }
 .input[aria-invalid="true"], .textarea[aria-invalid="true"] { border-color: var(--danger); }
@@ -129,7 +132,7 @@ fieldset.field { border: 0; padding: 0; margin: 0; }
 .choice-row { display: flex; gap: .6rem; flex-wrap: wrap; }
 .choice {
   display: flex; align-items: center; gap: .6rem; min-height: var(--tap);
-  padding: .5rem 1rem; border: 2px solid #8b8478; border-radius: 12px; background: #fff; cursor: pointer;
+  padding: .5rem 1rem; border: 2px solid #8a938d; border-radius: 12px; background: #fff; cursor: pointer;
   flex: 1 1 8rem;
 }
 .choice input { width: 22px; height: 22px; accent-color: var(--primary); margin: 0; }
@@ -165,15 +168,15 @@ fieldset.field { border: 0; padding: 0; margin: 0; }
 }
 .badge--booked { background: var(--ok-bg); color: var(--ok-ink); }
 .badge--waitlist { background: var(--warn-bg); color: var(--warn-ink); }
-.badge--cancelled { background: #ece7df; color: #4a4a44; }
-.badge--late { background: #ece7df; color: #4a4a44; }
+.badge--cancelled { background: #e9ebe7; color: #4d5550; }
+.badge--late { background: #e9ebe7; color: #4d5550; }
 .class-card--cancelled .class-time, .class-card--cancelled .class-title { text-decoration: line-through; color: var(--muted); }
 .deadline { font-size: .95rem; color: var(--ink); margin: .35rem 0 0; }
 
 /* ---------- כרטיסייה ---------- */
 .punch-count { display: flex; align-items: baseline; gap: .4rem; margin: .25rem 0 .5rem; }
 .punch-count strong { font-size: 2.6rem; line-height: 1; font-variant-numeric: tabular-nums; }
-.meter { height: 12px; background: #ece4d6; border-radius: 999px; overflow: hidden; }
+.meter { height: 12px; background: #e4e7e2; border-radius: 999px; overflow: hidden; }
 .meter > span { display: block; height: 100%; background: var(--primary); border-radius: 999px; }
 
 /* ---------- שבוע ---------- */
@@ -203,7 +206,7 @@ dialog.sheet {
   border: 0; padding: 0; width: min(560px, 100%); max-height: 90vh;
   margin: auto auto 0; border-radius: 20px 20px 0 0; background: var(--surface); color: var(--ink);
 }
-dialog.sheet::backdrop { background: rgb(31 42 36 / .45); }
+dialog.sheet::backdrop { background: rgb(23 33 29 / .45); }
 .sheet-body { padding: 1.25rem 1.1rem calc(1.25rem + env(safe-area-inset-bottom)); }
 @media (min-width: 640px) { dialog.sheet { margin: auto; border-radius: 20px; } }
 
@@ -248,7 +251,7 @@ button.kpi:hover { border-color: var(--primary); }
 .row-sub { color: var(--muted); font-size: .95rem; margin: 0; }
 
 /* תפוסה: פס עם סימון מינימום */
-.fill { position: relative; height: 12px; border-radius: 999px; background: #ece4d6; margin: .4rem 0 .2rem; }
+.fill { position: relative; height: 12px; border-radius: 999px; background: #e4e7e2; margin: .4rem 0 .2rem; }
 .fill > .fill-bar { position: absolute; inset-block: 0; inset-inline-start: 0; border-radius: 999px; background: var(--primary); }
 .fill > .fill-bar--low { background: var(--accent); }
 .fill > .fill-min { position: absolute; inset-block: -4px; width: 2px; background: var(--ink); }
@@ -265,7 +268,7 @@ button.kpi:hover { border-color: var(--primary); }
 .feed li { display: flex; gap: .7rem; padding: .6rem 0; border-bottom: 1px solid var(--line); }
 .feed li:last-child { border-bottom: 0; }
 .feed-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; margin-top: .55rem; background: var(--primary); }
-.feed-dot--cancel { background: #8b8478; }
+.feed-dot--cancel { background: var(--faint); }
 .feed-dot--pay { background: var(--accent); }
 .feed-time { color: var(--muted); font-size: .88rem; }
 
@@ -278,7 +281,7 @@ button.kpi:hover { border-color: var(--primary); }
 .member-name { font-weight: 600; }
 .select {
   font: inherit; color: var(--ink); background: #fff; min-height: var(--tap); padding: .5rem .75rem;
-  border: 2px solid #8b8478; border-radius: 12px; width: 100%;
+  border: 2px solid #8a938d; border-radius: 12px; width: 100%;
 }
 .secret {
   direction: ltr; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 1.5rem; letter-spacing: .08em;
@@ -304,8 +307,147 @@ button.kpi:hover { border-color: var(--primary); }
 .glyph { width: 1.35em; height: 1.35em; vertical-align: -0.3em; color: #0a6cff; margin-inline: .1em; }
 
 /* הצעה ממקום שהתפנה */
-.badge--offer { background: var(--ok-bg); color: var(--ok-ink); }
-.offer-box { margin-top: .75rem; padding: .85rem 1rem; border-radius: 12px; background: var(--ok-bg); border: 1px solid #b9d4c1; }
+.badge--offer { background: var(--warn-bg); color: var(--warn-ink); }
+.offer-box { margin-top: .75rem; padding: .85rem 1rem; border-radius: 12px; background: var(--warn-bg); border: 1px solid #e6d2a8; }
 .offer-box .btn-row { margin-top: .75rem; }
-.offer-title { margin: 0 0 .25rem; font-weight: 700; color: var(--ok-ink); }
+.offer-title { margin: 0 0 .25rem; font-weight: 700; color: var(--warn-ink); }
 .offer-note { margin: .5rem 0 0; color: var(--warn-ink); font-size: .95rem; }
+
+/* ---------- לוח שיעורים: פס ימים וציר זמן ---------- */
+.page--schedule .page-header { margin-bottom: .25rem; }
+.day-strip {
+  position: sticky; top: 0; z-index: 20; background: var(--bg);
+  margin: 0 -1rem; padding: .4rem 1rem .5rem; border-bottom: 1px solid var(--line);
+}
+.day-strip-scroll { display: flex; gap: .2rem; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; }
+.day-strip-scroll::-webkit-scrollbar { display: none; }
+.day-chip {
+  flex: 0 0 auto; width: 46px; min-height: 62px; scroll-snap-align: start;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border: 0; border-radius: 12px; background: transparent; font: inherit; color: var(--ink); cursor: pointer;
+}
+.day-chip-wd { font-size: .8rem; color: var(--muted); line-height: 1.2; }
+.day-chip-n { font-size: 1.15rem; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.day-chip-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--faint); }
+.day-chip-dot.is-mine { width: 6px; height: 6px; background: var(--primary); }
+.day-chip:disabled { cursor: default; color: #a9b0ab; }
+.day-chip:disabled .day-chip-wd { color: #a9b0ab; }
+.day-chip:disabled .day-chip-dot { visibility: hidden; }
+.day-chip.is-today .day-chip-n { text-decoration: underline 2px; text-underline-offset: 4px; }
+.day-chip.is-current { background: var(--ink); color: #fff; }
+.day-chip.is-current .day-chip-wd { color: rgb(255 255 255 / .78); }
+.day-chip.is-current .day-chip-dot { background: #fff; }
+
+.day { margin-top: 1.6rem; }
+.day-heading {
+  display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap;
+  font-size: 1.05rem; font-weight: 700; margin: 0 0 .9rem; scroll-margin-top: 96px;
+}
+.day-heading:focus { outline: none; }
+.day-heading-date { font-weight: 400; font-size: .95rem; color: var(--muted); }
+
+.timeline { list-style: none; margin: 0; padding: 0; }
+.slot { display: grid; grid-template-columns: 4.7rem 14px minmax(0, 1fr); column-gap: .6rem; }
+.slot-time { display: flex; flex-direction: column; padding-top: .05rem; }
+.slot-start { font-size: 1.5rem; font-weight: 300; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.slot-end { font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.slot-rail { position: relative; display: flex; justify-content: center; }
+.slot-rail::before { content: ""; position: absolute; inset-block: 0; width: 1px; background: var(--line); }
+.timeline > li:first-child .slot-rail::before { top: .6rem; }
+.timeline > li:last-child .slot-rail::before { bottom: auto; height: .6rem; }
+.slot-node {
+  position: relative; margin-top: .5rem; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--bg); border: 2px solid var(--faint);
+}
+.slot--booked .slot-node { background: var(--primary); border-color: var(--primary); }
+.slot--waitlist .slot-node { border-color: var(--primary); }
+.slot--offer .slot-node { background: var(--accent); border-color: var(--accent); }
+.slot--cancelled .slot-node { border-style: dashed; }
+.slot-body { min-width: 0; padding-bottom: 1.75rem; }
+.timeline > li:last-child .slot-body { padding-bottom: .5rem; }
+.slot-head { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
+.slot-title { font-size: 1.15rem; font-weight: 600; margin: 0; }
+.slot--cancelled .slot-title, .slot--cancelled .slot-start { text-decoration: line-through; color: var(--muted); }
+
+.tag { flex: none; font-size: .85rem; font-weight: 600; white-space: nowrap; padding: .1rem .6rem; border-radius: 999px; }
+.tag--mine { background: var(--primary); color: #fff; }
+.tag--quiet { background: var(--primary-soft); color: var(--ok-ink); }
+.tag--attention { background: var(--warn-bg); color: var(--warn-ink); }
+.tag--muted { background: #e9ebe7; color: #4d5550; }
+
+.seats { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem .65rem; margin-top: .4rem; }
+.seat-row { display: inline-flex; gap: 4px; }
+.seat { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--faint); }
+.seat.is-taken { background: var(--muted); border-color: var(--muted); }
+.seat-text { font-size: .92rem; color: var(--muted); }
+.seat-text.is-full { color: var(--ink); font-weight: 600; }
+.slot-note { font-size: .9rem; color: var(--muted); margin: .3rem 0 0; }
+.slot-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem .75rem; margin-top: .75rem; }
+.slot-actions .slot-note { margin: 0; flex: 1 1 auto; }
+
+.btn--sm { min-height: 44px; padding: .45rem 1.15rem; font-size: 1rem; border-radius: 12px; }
+.text-btn {
+  font-weight: 500 !important;
+  font-size: .95rem;
+  background: none; border: 0; font: inherit; font-weight: 600; color: var(--ink); cursor: pointer;
+  min-height: 44px; padding: 0 .25rem; text-decoration: underline; text-underline-offset: 3px;
+}
+.quiet { color: var(--muted); font-size: .95rem; }
+.confirm-head { margin-bottom: .9rem; }
+.confirm-title { font-size: 1.2rem; font-weight: 700; margin: 0; }
+.confirm-when { margin: 0; color: var(--muted); }
+
+/* יתרת כניסות: בראש כל מסך ועל הלשונית */
+.page-header--row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
+.page-header--row h1 { margin: 0; }
+.balance-chip {
+  display: inline-flex; align-items: baseline; gap: .45rem; min-height: 44px; padding: .35rem .85rem;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--surface);
+  font: inherit; color: var(--ink); cursor: pointer;
+}
+.balance-n { font-weight: 600; font-variant-numeric: tabular-nums; }
+.balance-until { font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.balance-chip.is-empty { background: var(--warn-bg); border-color: #e6d2a8; color: var(--warn-ink); }
+.tab-icon { position: relative; display: inline-flex; }
+.tab-count {
+  position: absolute; top: -6px; inset-inline-end: -12px; min-width: 20px; height: 20px; padding: 0 5px;
+  border-radius: 999px; background: var(--primary); color: #fff;
+  font-size: .75rem; font-weight: 700; line-height: 20px; text-align: center; font-variant-numeric: tabular-nums;
+}
+.tab-count.is-empty { background: var(--accent); }
+
+/* ---------- הכרטיסייה ורכישה ---------- */
+.section-heading { font-size: 1.05rem; font-weight: 700; margin: 2rem 0 .75rem; }
+.ticket { padding: 1.2rem 1.2rem 1.1rem; }
+.ticket-title { font-size: 1rem; font-weight: 600; color: var(--muted); margin: 0 0 .35rem; }
+.ticket-count { display: flex; align-items: baseline; gap: .5rem; margin: 0 0 .7rem; }
+.ticket-count strong { font-size: 3rem; font-weight: 300; line-height: 1; font-variant-numeric: tabular-nums; }
+.punches { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: .8rem; }
+.punch { width: 16px; height: 16px; border-radius: 50%; border: 1.5px dashed var(--faint); }
+.punch.is-left { border: 0; background: var(--primary); }
+.ticket-until { margin: 0; font-size: .95rem; color: var(--muted); }
+.ticket-soon { color: var(--warn-ink); font-weight: 600; }
+.ticket--empty h2 { font-size: 1.1rem; margin-bottom: .3rem; }
+
+.order-pending { border-color: #e6d2a8; }
+
+.shop { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.shop > li + li { border-top: 1px solid var(--line); }
+.shop-item {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  min-height: 64px; padding: .75rem 1.1rem; border: 0; background: transparent; font: inherit; color: inherit;
+  text-align: start; cursor: pointer;
+}
+.shop-item:hover:not([disabled]) .shop-name { text-decoration: underline; text-underline-offset: 3px; }
+.shop-item[disabled] { cursor: default; opacity: .7; }
+.shop-text { display: flex; flex-direction: column; min-width: 0; }
+.shop-name { font-weight: 600; }
+.shop-detail { font-size: .9rem; color: var(--muted); }
+.shop-price { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.order-total { display: flex; justify-content: space-between; align-items: baseline; padding: .75rem 0; margin: 0 0 .5rem; border-block: 1px solid var(--line); }
+.order-total strong { font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+
+.history summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.history .row-list { margin-top: .25rem; }
+.share-creds { padding: .9rem 0 0; border-top: 1px solid var(--line); }
+.share-creds-label { font-weight: 700; margin: 0 0 .5rem; }

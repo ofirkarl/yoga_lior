@@ -7,12 +7,12 @@ import { InstallHelpButton } from "../components/InstallGuide";
 
 const TEXT = {
   admin: {
-    on: "המכשיר הזה מקבל התראה על כל הרשמה חדשה שממתינה לאישור.",
-    off: "קבלי הודעה לטלפון ברגע שמישהי חדשה נרשמת וממתינה לאישור.",
+    on: "המכשיר הזה מקבל התראה על בקשות הצטרפות והזמנות חדשות.",
+    off: "הודעה לטלפון על כל בקשת הצטרפות חדשה והזמנה חדשה.",
   },
   member: {
-    on: "המכשיר הזה יקבל הודעה כשמתפנה לך מקום בשיעור שאת ברשימת ההמתנה שלו.",
-    off: "קבלי הודעה לטלפון כשמתפנה לך מקום בשיעור מלא, כדי לא לפספס את התור.",
+    on: "המכשיר הזה יקבל הודעה כשמתפנה מקום בשיעור שיש בו הרשמה לרשימת ההמתנה.",
+    off: "הודעה לטלפון כשמתפנה מקום בשיעור מלא, כדי לא לפספס את התור.",
   },
 };
 
@@ -34,7 +34,7 @@ export function PushCard({ audience = "admin" }: { audience?: "admin" | "member"
       setState(s);
       if (s === "on") {
         const r = await api.sendTestPush();
-        toast(r.sent > 0 ? "ההתראות הופעלו. שלחתי התראת בדיקה לטלפון." : "ההתראות הופעלו.");
+        toast(r.sent > 0 ? "ההתראות הופעלו. נשלחה התראת בדיקה לטלפון." : "ההתראות הופעלו.");
       }
     } catch (e) {
       toast(errorMessage(e));
@@ -47,7 +47,7 @@ export function PushCard({ audience = "admin" }: { audience?: "admin" | "member"
     setBusy(true);
     try {
       const r = await api.sendTestPush();
-      toast(r.sent > 0 ? "נשלחה התראת בדיקה." : "לא נמצא מכשיר פעיל. נסי לכבות ולהפעיל מחדש.");
+      toast(r.sent > 0 ? "נשלחה התראת בדיקה." : "לא נמצא מכשיר פעיל. כדאי לכבות ולהפעיל מחדש.");
     } catch (e) {
       toast(errorMessage(e));
     } finally {

@@ -49,36 +49,36 @@ export function InstallSteps() {
         <ol className="install-steps">
           <li>
             הקישור נפתח בתוך אפליקציה אחרת, ומשם אי אפשר להתקין.
-            לחצי על <DotsGlyph /> או על <ShareGlyph /> ובחרי <strong>"פתיחה בספארי"</strong>.
+            צריך ללחוץ על <DotsGlyph /> או על <ShareGlyph /> ולבחור <strong>"פתיחה בספארי"</strong>.
           </li>
-          <li>בספארי, חזרי למסך הזה וההוראות יתעדכנו.</li>
+          <li>בספארי, ההוראות כאן יתעדכנו.</li>
         </ol>
       );
     if (b === "chrome")
       return (
         <ol className="install-steps">
-          <li>לחצי על <ShareGlyph /> <strong>שיתוף</strong> בשורת הכתובת למעלה.</li>
-          <li>בחרי <AddGlyph /> <strong>"הוספה למסך הבית"</strong> ואז <strong>"הוספה"</strong>.</li>
-          <li>פתחי את <strong>יוגה עם ליאור</strong> מהאייקון החדש והתחברי משם.</li>
+          <li>ללחוץ על <ShareGlyph /> <strong>שיתוף</strong> בשורת הכתובת למעלה.</li>
+          <li>לבחור <AddGlyph /> <strong>"הוספה למסך הבית"</strong> ואז <strong>"הוספה"</strong>.</li>
+          <li>לפתוח את <strong>יוגה עם ליאור</strong> מהאייקון החדש ולהתחבר משם.</li>
         </ol>
       );
     return (
       <ol className="install-steps">
         <li>
-          לחצי על <ShareGlyph /> <strong>שיתוף</strong> בסרגל של ספארי.
-          <span className="install-note">לא רואה אותו? לחצי קודם על <DotsGlyph /> ליד שורת הכתובת.</span>
+          ללחוץ על <ShareGlyph /> <strong>שיתוף</strong> בסרגל של ספארי.
+          <span className="install-note">הכפתור לא מופיע? הוא נמצא מאחורי <DotsGlyph /> ליד שורת הכתובת.</span>
         </li>
-        <li>גללי מטה ובחרי <AddGlyph /> <strong>"הוספה למסך הבית"</strong>.</li>
-        <li>אם יש מתג לפתיחה כאפליקציה, השאירי אותו דלוק. לחצי <strong>"הוספה"</strong>.</li>
-        <li>פתחי את <strong>יוגה עם ליאור</strong> מהאייקון החדש במסך הבית, והתחברי משם.</li>
+        <li>לגלול מטה ולבחור <AddGlyph /> <strong>"הוספה למסך הבית"</strong>.</li>
+        <li>אם יש מתג לפתיחה כאפליקציה, להשאיר אותו דלוק וללחוץ <strong>"הוספה"</strong>.</li>
+        <li>לפתוח את <strong>יוגה עם ליאור</strong> מהאייקון החדש במסך הבית, ולהתחבר משם.</li>
       </ol>
     );
   }
   return (
     <ol className="install-steps">
-      <li>לחצי על <DotsGlyph /> בפינה של הדפדפן.</li>
-      <li>בחרי <strong>"הוספה למסך הבית"</strong> או <strong>"התקנת אפליקציה"</strong>.</li>
-      <li>פתחי את <strong>יוגה עם ליאור</strong> מהאייקון החדש.</li>
+      <li>ללחוץ על <DotsGlyph /> בפינה של הדפדפן.</li>
+      <li>לבחור <strong>"הוספה למסך הבית"</strong> או <strong>"התקנת אפליקציה"</strong>.</li>
+      <li>לפתוח את <strong>יוגה עם ליאור</strong> מהאייקון החדש.</li>
     </ol>
   );
 }

@@ -22,22 +22,31 @@ export function WaitlistSettings() {
   const [open, setOpen] = useState<number | null>(null);
   const [saved, setSaved] = useState<{ hold: number; open: number } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [savedPhone, setSavedPhone] = useState("");
   const toast = useToast();
 
   useEffect(() => {
     api.getWaitlistTiming()
       .then((t) => { setHold(t.hold); setOpen(t.open); setSaved(t); })
       .catch((e) => toast(errorMessage(e)));
+    api.getContactPhone().then((p) => { setPhone(p ?? ""); setSavedPhone(p ?? ""); }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (hold === null || open === null || !saved) return null;
-  const dirty = hold !== saved.hold || open !== saved.open;
+  const cleanPhone = phone.replace(/[\s-]/g, "");
+  const phoneOk = cleanPhone === "" || /^\+?[0-9]{9,15}$/.test(cleanPhone);
+  const dirty = hold !== saved.hold || open !== saved.open || cleanPhone !== savedPhone;
 
   async function save() {
     setBusy(true);
     try {
       await api.setWaitlistTiming(hold!, open!);
+      if (cleanPhone !== savedPhone) {
+        await api.setContactPhone(cleanPhone || null);
+        setSavedPhone(cleanPhone);
+      }
       setSaved({ hold: hold!, open: open! });
       toast("ההגדרות נשמרו. הן חלות על כל מקום שיתפנה מעכשיו.");
     } catch (e) {
@@ -49,25 +58,30 @@ export function WaitlistSettings() {
 
   return (
     <section aria-labelledby="wl-settings">
-      <div className="section-title"><h2 id="wl-settings">רשימת המתנה</h2></div>
+      <div className="section-title"><h2 id="wl-settings">הגדרות</h2></div>
       <div className="card stack">
-        <p style={{ margin: 0 }}>כשמתפנה מקום בשיעור מלא, הראשונה בתור מקבלת הודעה והמקום שמור לה לזמן קצוב. לא אישרה: הוא עובר לבאה.</p>
-        <Field label="כמה זמן המקום שמור לכל אחת">
+        <p style={{ margin: 0 }}>כשמתפנה מקום בשיעור מלא, מי שראשון בתור מקבל הודעה, והמקום נשמר לזמן קצוב. אם אין אישור, הוא עובר לבא בתור.</p>
+        <Field label="רשימת המתנה: כמה זמן המקום נשמר">
           {({ id }) => (
             <select id={id} className="select" value={hold} onChange={(e) => setHold(Number(e.target.value))}>
               {HOLD.map((m) => <option key={m} value={m}>{minutesText(m)}</option>)}
             </select>
           )}
         </Field>
-        <Field label="סמוך לשיעור, הודעה לכל הרשימה" hint="מהנקודה הזו לא שומרים מקום. כולן מקבלות הודעה, והראשונה שמאשרת נכנסת.">
+        <Field label="סמוך לשיעור, הודעה לכל הרשימה" hint="מהנקודה הזו לא שומרים מקום. כל הרשימה מקבלת הודעה, ומי שמאשר ראשון נכנס.">
           {({ id, describedBy }) => (
             <select id={id} className="select" value={open} aria-describedby={describedBy} onChange={(e) => setOpen(Number(e.target.value))}>
               {OPEN.map((m) => <option key={m} value={m}>{m === 0 ? minutesText(0) : `${minutesText(m)} לפני השיעור`}</option>)}
             </select>
           )}
         </Field>
+        <Field label="טלפון לוואטסאפ על תשלומים" hint="מתאמנים שמזמינים כרטיסייה יוכלו לשלוח הודעה למספר הזה כדי לתאם תשלום. אפשר להשאיר ריק." error={phoneOk ? undefined : "מספר טלפון לא תקין"}>
+          {({ id, describedBy }) => (
+            <input id={id} className="input input--ltr" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} aria-describedby={describedBy} aria-invalid={!phoneOk} />
+          )}
+        </Field>
         {dirty && (
-          <button type="button" className="btn btn--primary btn--block" onClick={save} disabled={busy}>
+          <button type="button" className="btn btn--primary btn--block" onClick={save} disabled={busy || !phoneOk}>
             {busy ? "בשמירה…" : "שמירת ההגדרות"}
           </button>
         )}

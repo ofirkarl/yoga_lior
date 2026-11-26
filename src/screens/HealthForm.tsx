@@ -7,14 +7,14 @@ import { Field } from "../components/ui";
 // השאלות מהטופס הקיים של ליאור. תעודת זהות לא נאספת כאן בכוונה: היא לא נחוצה להרשמה לשיעור,
 // ועדיף לא להחזיק מידע רגיש שאין בו צורך.
 const REQUIRED_TEXT: { key: keyof HealthAnswers; label: string }[] = [
-  { key: "back_joint_pain", label: "האם את/ה סובל/ת מכאבי גב ומפרקים?" },
-  { key: "health_issue", label: "האם את/ה סובל/ת מבעיה בריאותית כלשהי?" },
-  { key: "regular_medication", label: "האם את/ה נוטל/ת תרופות באופן קבוע?" },
-  { key: "surgery", label: "האם עברת הליך כירורגי כלשהו?" },
+  { key: "back_joint_pain", label: "יש כאבי גב או מפרקים?" },
+  { key: "health_issue", label: "יש בעיה בריאותית כלשהי?" },
+  { key: "regular_medication", label: "יש תרופות שנלקחות באופן קבוע?" },
+  { key: "surgery", label: "היה הליך כירורגי בעבר?" },
 ];
 const OPTIONAL_TEXT: { key: keyof HealthAnswers; label: string }[] = [
-  { key: "menstrual_irregularity", label: "האם את סובלת מאי סדירות במחזור הוסת? (לא חובה)" },
-  { key: "gynecological_issue", label: "האם את סובלת מבעיה גניקולוגית? (לא חובה)" },
+  { key: "menstrual_irregularity", label: "אי סדירות במחזור הוסת? (לא חובה)" },
+  { key: "gynecological_issue", label: "בעיה גניקולוגית? (לא חובה)" },
   { key: "anything_else", label: "האם יש משהו אחר שעליי לדעת? (לא חובה)" },
 ];
 

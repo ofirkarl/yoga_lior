@@ -1,6 +1,6 @@
 // גרסת הדגמה של שכבת הנתונים, לתצוגה מקדימה ובדיקות בלי Supabase.
 // בוחרים מצב בכתובת: ?s=login | password | pending | health | main
-import type { ImportedBalance, AdminSession, AttendMode, Dashboard, Entitlement, HealthAnswers, Member, MyBooking, Product, Profile, ScheduleItem } from "../src/lib/types";
+import type { ImportedBalance, AdminSession, AttendMode, Dashboard, Entitlement, HealthAnswers, Member, MyBooking, Order, Product, Profile, ScheduleItem, ShopProduct } from "../src/lib/types";
 
 export type Session = { user: { id: string } };
 
@@ -81,6 +81,11 @@ mark(4, "zoom");
   }
 }
 
+const mockOrders: Order[] = [
+  { id: "o-old", title: "כרטיסייה 10 כניסות", amount_ils: 650, status: "paid", payment_url: null,
+    created_at: new Date(Date.now() - 20 * 86_400_000).toISOString(), paid_at: new Date(Date.now() - 20 * 86_400_000).toISOString() },
+];
+
 const ents: Entitlement[] = [
   { id: "e1", title: "כרטיסייה 10 כניסות – 6 שבועות", mode: "studio", entries_total: 10, entries_left: 3,
     valid_from: "2026-10-20", valid_until: new Date(Date.now() + 5 * DAY).toISOString().slice(0, 10), status: "active" },
@@ -128,6 +133,33 @@ export const api = {
     s.my_booking_id = null; s.my_status = null; s.my_mode = null;
     return { new_status: "cancelled", refunded };
   },
+  async getShop() {
+    await wait();
+    return [
+      { id: "p1", name: "שיעור ניסיון", kind: "trial", mode: "studio", price_ils: 60, entries: 1, validity_days: 7, available: false, pending_order: null },
+      { id: "p2", name: "שיעור בודד", kind: "single", mode: "studio", price_ils: 90, entries: 1, validity_days: 7, available: true, pending_order: null },
+      { id: "p3", name: "כרטיסייה 5 כניסות", kind: "punch", mode: "studio", price_ils: 375, entries: 5, validity_days: 42, available: true, pending_order: null },
+      { id: "p4", name: "כרטיסייה 10 כניסות", kind: "punch", mode: "studio", price_ils: 650, entries: 10, validity_days: 42, available: true, pending_order: null },
+      { id: "p5", name: "זום, 4 שיעורים", kind: "punch", mode: "zoom", price_ils: 140, entries: 4, validity_days: 60, available: true, pending_order: null },
+    ] as ShopProduct[];
+  },
+  async createOrder(pid: string) {
+    await wait();
+    const o = { id: `o${Date.now()}`, title: pid === "p4" ? "כרטיסייה 10 כניסות" : "כרטיסייה 5 כניסות", amount_ils: pid === "p4" ? 650 : 375,
+      status: "pending" as const, payment_url: null, created_at: new Date().toISOString(), paid_at: null };
+    mockOrders.unshift(o);
+    return o;
+  },
+  async cancelOrder(id: string) { await wait(); const o = mockOrders.find((x) => x.id === id); if (o) o.status = "cancelled"; },
+  async getMyOrders() { await wait(); return mockOrders.map((o) => ({ ...o })); },
+  async getContactPhone() { return "0501234567"; },
+  async setContactPhone() { await wait(); },
+  async getPendingOrders() {
+    await wait();
+    return [{ id: "po1", user_id: "u3", full_name: "נועה ברק", phone: "0527654321", title: "כרטיסייה 10 כניסות", amount_ils: 650,
+      created_at: new Date(Date.now() - 40 * 60_000).toISOString() }];
+  },
+  async confirmOrder() { await wait(); },
   async getWaitlistTiming() { await wait(); return { hold: 60, open: 30 }; },
   async setWaitlistTiming() { await wait(); },
   async acceptOffer(bid: string) {

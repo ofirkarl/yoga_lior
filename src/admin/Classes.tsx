@@ -8,7 +8,7 @@ import { WaitlistSettings } from "./WaitlistSettings";
 
 const ACTIVE = ["booked", "attended", "no_show"];
 const STATUS_LABEL: Record<string, string> = {
-  booked: "רשומה", attended: "הגיעה", no_show: "לא הגיעה", waitlist: "בהמתנה", late_cancel: "ביטול מאוחר",
+  booked: "רשום", attended: "הגיע", no_show: "לא הגיע", waitlist: "בהמתנה", late_cancel: "ביטול מאוחר",
 };
 
 export function Classes() {
@@ -56,7 +56,7 @@ export function Classes() {
     setBusy(true);
     try {
       const n = await api.cancelSession(cancelling.id, reason.trim());
-      toast(n === 0 ? "השיעור בוטל." : `השיעור בוטל, ו-${n} נרשמות קיבלו את הכניסה בחזרה.`);
+      toast(n === 0 ? "השיעור בוטל." : `השיעור בוטל, והכניסה חזרה ל-${n} נרשמים.`);
       setCancelling(null);
       setReason("");
       await load();
@@ -119,10 +119,10 @@ export function Classes() {
                 </div>
                 <h3 id={`s-${s.id}`} className="class-title">{s.title}</h3>
                 {cancelled && s.cancel_reason && <p className="row-sub">סיבה: {s.cancel_reason}</p>}
-                {low && <p className="deadline">חסרות {s.min_participants - live.length} למינימום · החלטה עד {formatDeadline(s.cancel_deadline)}</p>}
+                {low && <p className="deadline">עוד {s.min_participants - live.length} למינימום · החלטה עד {formatDeadline(s.cancel_deadline)}</p>}
 
                 {!cancelled && (live.length > 0 || wait.length > 0 || late.length > 0) && (
-                  <ul className="roster" aria-label={`נרשמות ל${s.title}`}>
+                  <ul className="roster" aria-label={`נרשמים ל${s.title}`}>
                     {[...live, ...late, ...wait].map((b) => (
                       <li key={b.id}>
                         <span>
@@ -146,11 +146,11 @@ export function Classes() {
                     ))}
                   </ul>
                 )}
-                {!cancelled && live.length === 0 && wait.length === 0 && <p className="row-sub">אין נרשמות עדיין.</p>}
+                {!cancelled && live.length === 0 && wait.length === 0 && <p className="row-sub">אין עדיין הרשמות.</p>}
 
                 {!cancelled && !past && (
                   <div className="btn-row">
-                    <button type="button" className="btn btn--danger" onClick={() => { setReason(low ? "אין מספיק נרשמות" : ""); setCancelling(s); }}>
+                    <button type="button" className="btn btn--danger" onClick={() => { setReason(low ? "אין מספיק נרשמים" : ""); setCancelling(s); }}>
                       ביטול השיעור<span className="visually-hidden"> {s.title} {formatTime(s.starts_at)}</span>
                     </button>
                   </div>
@@ -166,9 +166,9 @@ export function Classes() {
           <div className="stack">
             <p><strong>{cancelling.title}</strong><br />{formatDay(cancelling.starts_at)}, {formatTime(cancelling.starts_at)}</p>
             <p className="notice notice--info">
-              כל הנרשמות יקבלו את הכניסה בחזרה לכרטיסייה, והשיעור יסומן אצלן כמבוטל.
+              הכניסה תחזור לכרטיסייה של כל מי שנרשם, והשיעור יסומן אצלו כמבוטל.
             </p>
-            <Field label="סיבה (תוצג למתאמנות)">
+            <Field label="סיבה (תוצג למתאמנים)">
               {({ id }) => <input id={id} className="input" value={reason} onChange={(e) => setReason(e.target.value)} />}
             </Field>
             <div className="btn-row">

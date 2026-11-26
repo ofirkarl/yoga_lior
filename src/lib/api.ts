@@ -2,7 +2,8 @@
 // ההרשאות נאכפות בבסיס הנתונים (RLS ופונקציות), לא כאן.
 import { createClient, type Session } from "@supabase/supabase-js";
 import type {
-  AdminSession, AttendMode, ImportedBalance, Dashboard, Entitlement, HealthAnswers, Member, MyBooking, PaymentMethod, Product, Profile, ScheduleItem, UserStatus,
+  AdminSession, AttendMode, ImportedBalance, Dashboard, Entitlement, HealthAnswers, Member, MyBooking, Order, PaymentMethod,
+  PendingOrder, Product, Profile, ScheduleItem, ShopProduct, UserStatus,
 } from "./types";
 
 const url = import.meta.env.VITE_SUPABASE_URL as string;
@@ -120,6 +121,47 @@ export const api = {
 
   async declineOffer(bookingId: string): Promise<void> {
     must(await supabase.rpc("decline_offer", { p_booking: bookingId }));
+  },
+
+  /* ---------- רכישה ---------- */
+  async getShop(): Promise<ShopProduct[]> {
+    return (must(await supabase.rpc("shop_products")) as ShopProduct[]).map((p) => ({ ...p, price_ils: Number(p.price_ils) }));
+  },
+
+  async createOrder(productId: string): Promise<Order> {
+    const o = must(await supabase.rpc("create_order", { p_product: productId })) as Order;
+    return { ...o, amount_ils: Number(o.amount_ils) };
+  },
+
+  async cancelOrder(orderId: string): Promise<void> {
+    must(await supabase.rpc("cancel_order", { p_order: orderId }));
+  },
+
+  async getMyOrders(): Promise<Order[]> {
+    const rows = must(
+      await supabase.from("orders")
+        .select("id, title, amount_ils, status, payment_url, created_at, paid_at")
+        .order("created_at", { ascending: false }).limit(30),
+    ) as Order[];
+    return rows.map((o) => ({ ...o, amount_ils: Number(o.amount_ils) }));
+  },
+
+  async getContactPhone(): Promise<string | null> {
+    const row = must(await supabase.from("settings").select("contact_phone").single()) as { contact_phone: string | null };
+    return row.contact_phone;
+  },
+
+  async setContactPhone(phone: string | null): Promise<void> {
+    const rows = must(await supabase.from("settings").update({ contact_phone: phone }).eq("id", true).select("id")) as unknown[];
+    if (!rows.length) throw new Error("admin_only");
+  },
+
+  async getPendingOrders(): Promise<PendingOrder[]> {
+    return (must(await supabase.rpc("admin_pending_orders")) as PendingOrder[]).map((o) => ({ ...o, amount_ils: Number(o.amount_ils) }));
+  },
+
+  async confirmOrder(orderId: string, method: PaymentMethod): Promise<void> {
+    must(await supabase.rpc("admin_confirm_order", { p_order: orderId, p_method: method }));
   },
 
   async getMyEntitlements(): Promise<Entitlement[]> {

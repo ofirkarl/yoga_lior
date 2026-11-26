@@ -4,6 +4,7 @@
 //   1. מהטריגרים בבסיס הנתונים (pg_net), עם הכותרת x-notify-secret.
 //      { "event": "new_signup", "user_id": "<uuid>" }
 //      { "event": "waitlist_offer", "booking_id": "<uuid>" }
+//      { "event": "new_order", "order_id": "<uuid>" }
 //   2. מהאפליקציה, כמשתמשת מחוברת, כדי לבדוק שההתראות מגיעות למכשיר שלה:
 //      { "event": "test" }  → נשלחת התראה רק למכשירים של מי שביקשה.
 //
@@ -82,10 +83,10 @@ Deno.serve(async (req) => {
     if (body.event === "new_signup" && typeof body.user_id === "string") {
       const { data: p } = await admin.from("profiles").select("full_name, email, status").eq("id", body.user_id).maybeSingle();
       if (!p || p.status !== "pending") return reply(200, { sent: 0, skipped: "not_pending" });
-      const who = (p.full_name || "").trim() || p.email || "מישהי חדשה";
+      const who = (p.full_name || "").trim() || p.email || "משתמש חדש";
       payload = {
         title: "בקשת הצטרפות חדשה",
-        body: `${who} נרשמה לאפליקציה וממתינה לאישור שלך`,
+        body: `${who}. הבקשה ממתינה לאישור שלך.`,
         url: "/?tab=members",
         tag: `signup-${body.user_id}`,
       };
@@ -106,17 +107,33 @@ Deno.serve(async (req) => {
       payload = b.offer_open
         ? {
           title: "התפנה מקום בשיעור",
-          body: `${s.title}, ${when}. הראשונה שמאשרת מקבלת את המקום.`,
+          body: `${s.title}, ${when}. המקום יינתן לפי סדר האישור.`,
           url: "/?tab=mine",
           tag: `offer-${body.booking_id}`,
         }
         : {
           title: "התפנה לך מקום בשיעור",
-          body: `${s.title}, ${when}. המקום שמור לך עד ${timeText(b.offer_expires_at)}. לחצי כדי להירשם.`,
+          body: `${s.title}, ${when}. המקום שמור לך עד ${timeText(b.offer_expires_at)}.`,
           url: "/?tab=mine",
           tag: `offer-${body.booking_id}`,
         };
       targetUsers = [b.user_id];
+    } else if (body.event === "new_order" && typeof body.order_id === "string") {
+      const { data: o } = await admin
+        .from("orders")
+        .select("title, amount_ils, status, buyer:profiles!inner(full_name)")
+        .eq("id", body.order_id)
+        .maybeSingle();
+      if (!o || o.status !== "pending") return reply(200, { sent: 0, skipped: "not_pending" });
+      const buyer = (o.buyer as unknown as { full_name: string } | null)?.full_name || "מתאמן";
+      payload = {
+        title: "הזמנה חדשה",
+        body: `${buyer}: ${o.title}, ${Number(o.amount_ils).toLocaleString("he-IL")} ₪. ממתינה לתשלום.`,
+        url: "/?tab=room",
+        tag: `order-${body.order_id}`,
+      };
+      const { data: admins } = await admin.from("profiles").select("id").eq("role", "admin").eq("status", "active");
+      targetUsers = (admins ?? []).map((a) => a.id);
     } else {
       return reply(400, { error: "unknown_event" });
     }
@@ -132,7 +149,7 @@ Deno.serve(async (req) => {
     if (body.event !== "test") return reply(400, { error: "unknown_event" });
     payload = {
       title: "ההתראות פועלות",
-      body: "מעכשיו תקבלי כאן הודעות מהסטודיו.",
+      body: "מעכשיו יגיעו לכאן הודעות מהסטודיו.",
       url: "/",
       tag: "test",
     };

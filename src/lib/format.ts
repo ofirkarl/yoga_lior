@@ -15,7 +15,7 @@ export const formatDate = (isoOrDate: string) =>
 /** מפתח יום בשעון ישראל, לקיבוץ שיעורים לפי ימים */
 export const dayKey = (iso: string) => keyFmt.format(new Date(iso));
 
-/** "יום ראשון 20:00" — מועד הביטול כמו שמתאמנת אומרת אותו */
+/** "יום ראשון ב-20:00": מועד הביטול כמו שאומרים אותו */
 export function formatDeadline(iso: string): string {
   const d = new Date(iso);
   const today = dayKey(new Date().toISOString());
@@ -33,8 +33,8 @@ export function placesLeftText(left: number): string {
 
 export function missingText(missing: number): string {
   return missing === 1
-    ? "חסרה עוד נרשמת אחת כדי שהשיעור יתקיים"
-    : `חסרות עוד ${missing} נרשמות כדי שהשיעור יתקיים`;
+    ? "השיעור יתקיים אם תהיה עוד הרשמה אחת"
+    : `השיעור יתקיים אם יהיו עוד ${missing} הרשמות`;
 }
 
 const money = new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 });

@@ -499,4 +499,46 @@ update settings set offer_hold_minutes = 30;
 select t.ok((select offer_hold_minutes from settings) = 30, 'ליאור משנה את זמן השמירה');
 reset role;
 
+-- ---------------------------------------------------------------------
+-- רכישה מהאפליקציה
+-- ---------------------------------------------------------------------
+delete from net.requests;
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-0000000000c1');
+select t.ok((select available from shop_products() where name = 'ניסיון'), 'שיעור ניסיון זמין למי שעוד לא ניצל');
+select (create_order((select id from products where name = 'ניסיון'))).id as o1 \gset
+select t.ok((select id from create_order((select id from products where name = 'ניסיון'))) = :'o1'::uuid, 'הזמנה כפולה מחזירה את אותה הזמנה');
+select t.ok((select status from orders where id = :'o1') = 'pending', 'ההזמנה ממתינה לתשלום');
+select t.ok((select count(*) from entitlements e join products p on p.id = e.product_id where e.user_id = auth.uid() and p.name = 'ניסיון') = 0,
+            'הזמנה לבד לא פותחת כרטיסייה');
+select t.fails(format('select admin_confirm_order(%L, ''bit'')', :'o1'), 'admin_only', 'מתאמן לא מאשר תשלום בעצמו');
+select t.fails($q$insert into orders (user_id, product_id, title, amount_ils) values (auth.uid(), (select id from products limit 1), 'x', 0)$q$,
+               'permission denied', 'אין כתיבה ישירה להזמנות');
+select t.fails(format('select complete_order_internal(%L, ''bit'', auth.uid())', :'o1'), 'permission denied', 'אין גישה לסגירה הפנימית');
+select t.as_user('00000000-0000-0000-0000-0000000000d1');
+select t.ok((select count(*) from orders) = 0, 'מתאמן אחר לא רואה את ההזמנה');
+reset role;
+select t.ok((select count(*) from net.requests where body->>'event' = 'new_order') = 1, 'ליאור מקבלת התראה על ההזמנה');
+
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-00000000000a');
+select t.ok((select count(*) from admin_pending_orders() where id = :'o1') = 1, 'ההזמנה מופיעה אצל ליאור');
+select admin_confirm_order(:'o1', 'bit');
+select admin_confirm_order(:'o1', 'bit');
+reset role;
+select t.ok((select status from orders where id = :'o1') = 'paid', 'אחרי האישור ההזמנה שולמה');
+select t.ok((select count(*) from entitlements e join products p on p.id = e.product_id
+             where e.user_id = '00000000-0000-0000-0000-0000000000c1' and p.name = 'ניסיון') = 1, 'הכרטיסייה נפתחה פעם אחת בלבד');
+select t.ok((select method from payments p join orders o on o.payment_id = p.id where o.id = :'o1') = 'bit', 'התשלום נרשם');
+
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-0000000000c1');
+select t.ok(not (select available from shop_products() where name = 'ניסיון'), 'אחרי הניצול, שיעור ניסיון כבר לא זמין');
+select t.fails($q$select create_order((select id from products where name = 'ניסיון'))$q$, 'once_per_user', 'אי אפשר להזמין ניסיון פעמיים');
+select (create_order((select id from products where name = 'זום 4'))).id as o2 \gset
+select cancel_order(:'o2');
+select t.ok((select status from orders where id = :'o2') = 'cancelled', 'מתאמן מבטל הזמנה שלו');
+select t.fails(format('select cancel_order(%L)', :'o2'), 'order_not_pending', 'אי אפשר לבטל פעמיים');
+reset role;
+
 \echo 'כל הבדיקות עברו'

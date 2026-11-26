@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api } from "../lib/api";
 import { errorMessage } from "../lib/errors";
-import { dayKey, formatDay, formatDeadline, formatTime, missingText, placesLeftText } from "../lib/format";
+import { dayKey, formatDay, formatDeadline, formatTime, missingText } from "../lib/format";
 import type { AttendMode, ScheduleItem } from "../lib/types";
 import { Loading, Sheet, useToast } from "../components/ui";
 import { OfferBox } from "../components/OfferBox";
 
-const WEEKS_AHEAD = 4; // הרשמה עד חודש מראש
+const DAYS_AHEAD = 30; // אפשר להירשם עד חודש מראש
 
 /** מפתח יום (YYYY-MM-DD) פלוס מספר ימים */
 function addDays(key: string, days: number): string {
@@ -15,54 +15,37 @@ function addDays(key: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** ההיסט של שעון ישראל מ-UTC ביום מסוים, למשל "+02:00" או "+03:00" בשעון קיץ */
-function israelOffset(key: string): string {
-  const name = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Jerusalem", timeZoneName: "longOffset" })
-    .formatToParts(new Date(`${key}T12:00:00Z`))
-    .find((p) => p.type === "timeZoneName")?.value;
-  return name?.replace("GMT", "") || "+02:00";
-}
-
-/** יום ראשון 00:00 בשעון ישראל, בהיסט שבועות מהשבוע הנוכחי */
-function weekStart(offset: number): Date {
-  const today = dayKey(new Date().toISOString());
-  const weekday = new Date(`${today}T12:00:00Z`).getUTCDay(); // 0 = ראשון
-  const sunday = addDays(today, -weekday + offset * 7);
-  return new Date(`${sunday}T00:00:00${israelOffset(sunday)}`);
-}
+const stripWeekday = new Intl.DateTimeFormat("he-IL", { weekday: "narrow", timeZone: "UTC" });
+const stripLabel = new Intl.DateTimeFormat("he-IL", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 
 type Pending = { item: ScheduleItem; action: "book"; mode: AttendMode } | { item: ScheduleItem; action: "cancel" };
 
-export function Schedule({ onChanged }: { onChanged?: () => void }) {
+export function Schedule({ onChanged, balance }: { onChanged?: () => void; balance?: ReactNode }) {
   const toast = useToast();
-  const [week, setWeek] = useState(0);
   const [items, setItems] = useState<ScheduleItem[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [autoEnroll, setAutoEnroll] = useState(false);
+  const [activeDay, setActiveDay] = useState<string | null>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
 
-  const range = useMemo(() => {
-    const from = weekStart(week);
-    const to = new Date(from.getTime() + 7 * 86_400_000);
-    return { from: week === 0 ? new Date() : from, start: from, to };
-  }, [week]);
+  const today = useMemo(() => dayKey(new Date().toISOString()), []);
+  const days = useMemo(() => Array.from({ length: DAYS_AHEAD + 1 }, (_, i) => addDays(today, i)), [today]);
 
   const load = useCallback(async () => {
     setLoadError(null);
     try {
-      setItems(await api.getSchedule(range.from, range.to));
+      const to = new Date(Date.now() + (DAYS_AHEAD + 1) * 86_400_000);
+      setItems(await api.getSchedule(new Date(), to));
     } catch (e) {
       setLoadError(errorMessage(e));
       setItems([]);
     }
-  }, [range]);
+  }, []);
 
-  useEffect(() => {
-    setItems(null);
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   const byDay = useMemo(() => {
     const map = new Map<string, ScheduleItem[]>();
@@ -70,8 +53,38 @@ export function Schedule({ onChanged }: { onChanged?: () => void }) {
       const k = dayKey(it.starts_at);
       map.set(k, [...(map.get(k) ?? []), it]);
     }
-    return [...map.entries()];
+    return map;
   }, [items]);
+
+  // היום שבראש המסך מסומן בפס הימים
+  useEffect(() => {
+    if (!items?.length) return;
+    const heads = [...document.querySelectorAll<HTMLElement>("[data-day]")];
+    const io = new IntersectionObserver(
+      (entries) => {
+        const top = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (top) setActiveDay((top.target as HTMLElement).dataset.day!);
+      },
+      { rootMargin: "-90px 0px -60% 0px" },
+    );
+    heads.forEach((h) => io.observe(h));
+    return () => io.disconnect();
+  }, [items]);
+
+  // הכפתור של היום הפעיל נשאר גלוי בפס
+  useEffect(() => {
+    if (!activeDay) return;
+    stripRef.current?.querySelector<HTMLElement>(`[data-strip="${activeDay}"]`)?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activeDay]);
+
+  function jumpTo(k: string) {
+    const el = document.getElementById(`day-${k}`);
+    if (!el) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 96, behavior: reduce ? "auto" : "smooth" });
+    setActiveDay(k);
+    el.focus({ preventScroll: true });
+  }
 
   async function confirm() {
     if (!pending) return;
@@ -83,13 +96,13 @@ export function Schedule({ onChanged }: { onChanged?: () => void }) {
         toast(
           res.status === "waitlist"
             ? autoEnroll
-              ? "ההרשמה נוספה לרשימת ההמתנה. אם יתפנה מקום, היא תעבור אוטומטית."
-              : "ההרשמה נוספה לרשימת ההמתנה. אם יתפנה מקום, תישלח הודעה לפי התור."
-            : `ההרשמה ל${pending.item.title} נקלטה. אפשר לבטל ללא חיוב עד ${formatDeadline(pending.item.cancel_deadline)}.`,
+              ? "ההרשמה לרשימת ההמתנה נקלטה. כשיתפנה מקום, היא תושלם אוטומטית."
+              : "ההרשמה לרשימת ההמתנה נקלטה. כשיתפנה מקום תגיע הודעה."
+            : `ההרשמה ל${pending.item.title} נקלטה.`,
         );
       } else {
         const res = await api.cancelBooking(pending.item.my_booking_id!);
-        toast(res.refunded ? "ההרשמה בוטלה, והכניסה חזרה לכרטיסייה." : "ההרשמה בוטלה. הכניסה לא חזרה כי מועד הביטול ללא חיוב עבר.");
+        toast(res.refunded ? "ההרשמה בוטלה, והכניסה חזרה לכרטיסייה." : "ההרשמה בוטלה.");
       }
       setPending(null);
       await load();
@@ -101,24 +114,41 @@ export function Schedule({ onChanged }: { onChanged?: () => void }) {
     }
   }
 
-  const weekLabel =
-    week === 0 ? "השבוע" : week === 1 ? "שבוע הבא" : `בעוד ${week} שבועות`;
+  const visibleDays = days.filter((k) => byDay.has(k));
+  const rel = (k: string) => (k === today ? "היום" : k === addDays(today, 1) ? "מחר" : null);
+  const current = activeDay ?? visibleDays[0] ?? null;
 
   return (
-    <main id="main" className="page">
-      <div className="page-header">
+    <main id="main" className="page page--schedule">
+      <div className="page-header page-header--row">
         <h1>לוח שיעורים</h1>
-        <p>אפשר להירשם עד חודש מראש.</p>
+        {balance}
       </div>
 
-      <nav className="week-nav" aria-label="מעבר בין שבועות">
-        <button type="button" className="btn btn--ghost" onClick={() => setWeek((w) => w - 1)} disabled={week === 0} aria-label="השבוע הקודם">
-          →
-        </button>
-        <p className="week-label" aria-live="polite">{weekLabel}</p>
-        <button type="button" className="btn btn--ghost" onClick={() => setWeek((w) => w + 1)} disabled={week >= WEEKS_AHEAD} aria-label="השבוע הבא">
-          ←
-        </button>
+      <nav className="day-strip" aria-label="מעבר ליום">
+        <div className="day-strip-scroll" ref={stripRef}>
+          {days.map((k) => {
+            const has = byDay.has(k);
+            const d = new Date(`${k}T12:00:00Z`);
+            const isMineDay = byDay.get(k)?.some((it) => it.my_status === "booked" || it.my_status === "waitlist");
+            return (
+              <button
+                key={k}
+                type="button"
+                data-strip={k}
+                className={`day-chip${k === current ? " is-current" : ""}${k === today ? " is-today" : ""}`}
+                onClick={() => jumpTo(k)}
+                disabled={!has}
+                aria-current={k === current ? "date" : undefined}
+                aria-label={`${stripLabel.format(d)}${has ? "" : ", אין שיעורים"}${isMineDay ? ", יש לך הרשמה" : ""}`}
+              >
+                <span className="day-chip-wd" aria-hidden="true">{stripWeekday.format(d)}</span>
+                <span className="day-chip-n" aria-hidden="true">{d.getUTCDate()}</span>
+                <span className={`day-chip-dot${isMineDay ? " is-mine" : ""}`} aria-hidden="true" />
+              </button>
+            );
+          })}
+        </div>
       </nav>
 
       {loadError && (
@@ -130,23 +160,31 @@ export function Schedule({ onChanged }: { onChanged?: () => void }) {
 
       {items === null ? (
         <Loading label="טוען את השיעורים…" />
-      ) : byDay.length === 0 && !loadError ? (
-        <p className="empty">אין שיעורים פתוחים בשבוע הזה.</p>
+      ) : visibleDays.length === 0 && !loadError ? (
+        <p className="empty">אין שיעורים פתוחים בחודש הקרוב.</p>
       ) : (
-        byDay.map(([k, list]) => (
-          <section key={k} aria-labelledby={`day-${k}`}>
-            <h2 className="day-title" id={`day-${k}`}>{formatDay(list[0].starts_at)}</h2>
-            {list.map((it) => (
-              <ClassCard
-                key={it.session_id}
-                item={it}
-                onBook={(mode) => { setActionError(null); setAutoEnroll(false); setPending({ item: it, action: "book", mode }); }}
-                onCancel={() => { setActionError(null); setPending({ item: it, action: "cancel" }); }}
-                onChanged={() => { load(); onChanged?.(); }}
-              />
-            ))}
-          </section>
-        ))
+        visibleDays.map((k) => {
+          const list = byDay.get(k)!;
+          return (
+            <section key={k} className="day" aria-labelledby={`day-${k}`}>
+              <h2 className="day-heading" id={`day-${k}`} data-day={k} tabIndex={-1}>
+                {rel(k) ? <>{rel(k)}<span className="day-heading-date">{formatDay(list[0].starts_at)}</span></> : formatDay(list[0].starts_at)}
+              </h2>
+              <ol className="timeline">
+                {list.map((it) => (
+                  <li key={it.session_id}>
+                    <ClassSlot
+                      item={it}
+                      onBook={(mode) => { setActionError(null); setAutoEnroll(false); setPending({ item: it, action: "book", mode }); }}
+                      onCancel={() => { setActionError(null); setPending({ item: it, action: "cancel" }); }}
+                      onChanged={() => { load(); onChanged?.(); }}
+                    />
+                  </li>
+                ))}
+              </ol>
+            </section>
+          );
+        })
       )}
 
       <Sheet
@@ -154,18 +192,18 @@ export function Schedule({ onChanged }: { onChanged?: () => void }) {
         onClose={() => !busy && setPending(null)}
         title={
           !pending ? "" : pending.action === "cancel"
-            ? "ביטול הרשמה"
-            : isFull(pending.item) && pending.mode === "studio" ? "הצטרפות לרשימת המתנה" : "אישור הרשמה"
+            ? pending.item.my_status === "waitlist" ? "יציאה מרשימת ההמתנה" : "ביטול הרשמה"
+            : isFull(pending.item) && pending.mode === "studio" ? "הצטרפות לרשימת ההמתנה" : "הרשמה לשיעור"
         }
       >
         {pending && <ConfirmBody pending={pending} />}
         {pending?.action === "book" && pending.mode === "studio" && isFull(pending.item) && (
-          <label className="checkbox-line" style={{ marginTop: ".5rem" }}>
+          <label className="checkbox-line" style={{ marginTop: ".75rem" }}>
             <input type="checkbox" checked={autoEnroll} onChange={(e) => setAutoEnroll(e.target.checked)} />
             <span>
-              להכניס אותי אוטומטית כשמתפנה מקום.
+              להירשם אוטומטית כשמתפנה מקום
               <span className="row-sub" style={{ display: "block" }}>
-                תנוכה כניסה מהכרטיסייה, גם אם המקום מתפנה אחרי מועד הביטול ללא חיוב.
+                ההרשמה תושלם מיד, והכניסה תירד מהכרטיסייה גם אם זה קורה סמוך לשיעור.
               </span>
             </span>
           </label>
@@ -178,7 +216,10 @@ export function Schedule({ onChanged }: { onChanged?: () => void }) {
             onClick={confirm}
             disabled={busy}
           >
-            {busy ? "רגע…" : pending?.action === "cancel" ? "ביטול ההרשמה" : "אישור"}
+            {busy ? "רגע…"
+              : pending?.action === "cancel"
+                ? pending.item.my_status === "waitlist" ? "יציאה מהרשימה" : "ביטול ההרשמה"
+                : pending && isFull(pending.item) && pending.mode === "studio" ? "הצטרפות לרשימה" : "הרשמה"}
           </button>
           <button type="button" className="btn btn--ghost" onClick={() => setPending(null)} disabled={busy}>
             חזרה
@@ -189,130 +230,147 @@ export function Schedule({ onChanged }: { onChanged?: () => void }) {
   );
 }
 
-const isFull = (it: ScheduleItem) => it.booked_studio + (it.held_studio ?? 0) >= it.max_participants;
+const taken = (it: ScheduleItem) => it.booked_studio + (it.held_studio ?? 0);
+const isFull = (it: ScheduleItem) => taken(it) >= it.max_participants;
 const deadlinePassed = (it: ScheduleItem) => new Date(it.cancel_deadline).getTime() < Date.now();
+const endTime = (it: ScheduleItem) => formatTime(new Date(new Date(it.starts_at).getTime() + it.duration_min * 60_000).toISOString());
 
 function ConfirmBody({ pending }: { pending: Pending }) {
   const it = pending.item;
-  const when = `${formatDay(it.starts_at)}, ${formatTime(it.starts_at)}`;
+  const head = (
+    <div className="confirm-head">
+      <p className="confirm-title">{it.title}{pending.action === "book" && pending.mode === "zoom" ? " בזום" : ""}</p>
+      <p className="confirm-when">{formatDay(it.starts_at)}, {formatTime(it.starts_at)}–{endTime(it)}</p>
+    </div>
+  );
   if (pending.action === "cancel") {
-    const waitlist = it.my_status === "waitlist";
+    if (it.my_status === "waitlist") return <>{head}<p className="quiet">היציאה מהרשימה לא משפיעה על הכרטיסייה.</p></>;
     return (
       <>
-        <p><strong>{it.title}</strong><br />{when}</p>
-        {waitlist ? (
-          <p>היציאה מרשימת ההמתנה לא משפיעה על הכרטיסייה.</p>
-        ) : deadlinePassed(it) ? (
-          <p className="notice notice--warn">מועד הביטול ללא חיוב עבר, ולכן הכניסה לא תחזור לכרטיסייה.</p>
-        ) : (
-          <p className="notice notice--ok">הביטול בזמן, והכניסה תחזור לכרטיסייה.</p>
-        )}
+        {head}
+        <p className="quiet">
+          {deadlinePassed(it)
+            ? "מועד הביטול ללא חיוב עבר, לכן הכניסה לא תחזור לכרטיסייה."
+            : "הכניסה תחזור לכרטיסייה."}
+        </p>
       </>
     );
   }
-  const waitlist = pending.mode === "studio" && isFull(it);
+  if (pending.mode === "studio" && isFull(it)) {
+    return (
+      <>
+        {head}
+        <p>השיעור מלא. כשמתפנה מקום, מי שבתור מקבלים הודעה לפי הסדר, עם זמן קצוב להירשם.</p>
+        <p className="quiet">כדי לא לפספס, אפשר להפעיל התראות בלשונית "הכרטיסייה".</p>
+      </>
+    );
+  }
   return (
     <>
-      <p>
-        <strong>{it.title}</strong>
-        {pending.mode === "zoom" ? " · בזום" : " · בסטודיו"}
-        <br />{when} · {it.duration_min} דקות
+      {head}
+      <p className="quiet">
+        {deadlinePassed(it) ? "מועד הביטול ללא חיוב כבר עבר." : <>ביטול ללא חיוב עד {formatDeadline(it.cancel_deadline)}.</>}
       </p>
-      {waitlist ? (
-        <p className="notice notice--info">
-          השיעור מלא. כשיתפנה מקום, הראשונה בתור תקבל הודעה ושעה להירשם, ואחריה הבאה בתור.
-          כדי לקבל את ההודעה בזמן, כדאי להפעיל התראות במסך "הכרטיסייה שלי".
-        </p>
-      ) : (
-        <p className="notice notice--info">
-          תנוכה כניסה אחת מהכרטיסייה.
-          <br />
-          <strong>ביטול ללא חיוב עד {formatDeadline(it.cancel_deadline)}.</strong>
-        </p>
-      )}
     </>
   );
 }
 
-function ClassCard({ item: it, onBook, onCancel, onChanged }: {
+/** שורת מושבים: עיגול לכל מקום בסטודיו, מלא = תפוס */
+function Seats({ it }: { it: ScheduleItem }) {
+  const max = it.max_participants;
+  const used = Math.min(taken(it), max);
+  const left = max - used;
+  const text = left > 0
+    ? left === 1 ? "מקום אחד פנוי" : `${left} מקומות פנויים`
+    : it.waitlist_count > 0 ? `מלא, ${it.waitlist_count} בהמתנה` : "מלא";
+  return (
+    <div className="seats">
+      {max <= 14 && (
+        <span className="seat-row" aria-hidden="true">
+          {Array.from({ length: max }, (_, i) => <span key={i} className={`seat${i < used ? " is-taken" : ""}`} />)}
+        </span>
+      )}
+      <span className={`seat-text${left === 0 ? " is-full" : ""}`}>
+        {text}
+        <span className="visually-hidden"> מתוך {max}</span>
+      </span>
+    </div>
+  );
+}
+
+function ClassSlot({ item: it, onBook, onCancel, onChanged }: {
   item: ScheduleItem; onBook: (m: AttendMode) => void; onCancel: () => void; onChanged: () => void;
 }) {
   const cancelled = it.status === "cancelled";
-  const left = it.max_participants - it.booked_studio - (it.held_studio ?? 0);
   const offer = it.my_status === "waitlist" && it.my_offer_expires_at && it.my_booking_id;
   const total = it.booked_studio + it.booked_zoom;
   const missing = it.min_participants - total;
   const mine = it.my_status;
   const titleId = `c-${it.session_id}`;
+  const state = cancelled ? "cancelled" : offer ? "offer" : mine === "booked" ? "booked" : mine === "waitlist" ? "waitlist" : "open";
 
   return (
-    <article className={`card class-card${cancelled ? " class-card--cancelled" : ""}`} aria-labelledby={titleId}>
-      <div className="class-top">
-        <span className="class-time">{formatTime(it.starts_at)}</span>
-        {cancelled ? (
-          <span className="badge badge--cancelled">השיעור בוטל</span>
-        ) : mine === "booked" ? (
-          <span className="badge badge--booked">{it.my_mode === "zoom" ? "ההרשמה שלך · זום" : "ההרשמה שלך"}</span>
-        ) : offer ? (
-          <span className="badge badge--offer">התפנה מקום</span>
-        ) : mine === "waitlist" ? (
-          <span className="badge badge--waitlist">ברשימת ההמתנה</span>
-        ) : mine === "late_cancel" ? (
-          <span className="badge badge--late">בוטל מאוחר</span>
-        ) : null}
+    <article className={`slot slot--${state}`} aria-labelledby={titleId}>
+      <div className="slot-time">
+        <span className="slot-start">{formatTime(it.starts_at)}</span>
+        <span className="slot-end"><span className="visually-hidden">עד </span>{endTime(it)}</span>
       </div>
-      <h3 className="class-title" id={titleId}>{it.title}</h3>
-      <p className="class-meta">
-        {it.duration_min} דקות
-        {!cancelled && <> · {placesLeftText(left)}</>}
-        {!cancelled && it.zoom_enabled && <> · אפשר גם בזום</>}
-      </p>
+      <div className="slot-rail" aria-hidden="true"><span className="slot-node" /></div>
+      <div className="slot-body">
+        <div className="slot-head">
+          <h3 className="slot-title" id={titleId}>{it.title}</h3>
+          {cancelled ? <span className="tag tag--muted">בוטל</span>
+            : offer ? <span className="tag tag--attention">התפנה מקום</span>
+            : mine === "booked" ? <span className="tag tag--mine">{it.my_mode === "zoom" ? "ההרשמה שלך, בזום" : "ההרשמה שלך"}</span>
+            : mine === "waitlist" ? <span className="tag tag--quiet">ברשימת ההמתנה</span>
+            : mine === "late_cancel" ? <span className="tag tag--muted">בוטל מאוחר</span>
+            : null}
+        </div>
 
-      {!cancelled && missing > 0 && !deadlinePassed(it) && <p className="deadline">{missingText(missing)}</p>}
+        {!cancelled && <Seats it={it} />}
+        {!cancelled && it.zoom_enabled && !mine && <p className="slot-note">אפשר גם בזום</p>}
+        {!cancelled && missing > 0 && !deadlinePassed(it) && !mine && <p className="slot-note">{missingText(missing)}</p>}
 
-      {!cancelled && offer && (
-        <OfferBox
-          bookingId={it.my_booking_id!}
-          title={it.title}
-          expiresAt={it.my_offer_expires_at!}
-          open={it.my_offer_open}
-          cancelDeadline={it.cancel_deadline}
-          onDone={onChanged}
-        />
-      )}
+        {!cancelled && offer && (
+          <OfferBox
+            bookingId={it.my_booking_id!}
+            title={it.title}
+            expiresAt={it.my_offer_expires_at!}
+            open={it.my_offer_open}
+            cancelDeadline={it.cancel_deadline}
+            onDone={onChanged}
+          />
+        )}
 
-      {!cancelled && !offer && (mine === "booked" || mine === "waitlist") && (
-        <>
-          {mine === "booked" && (
-            <p className="deadline">
-              {deadlinePassed(it)
-                ? "מועד הביטול ללא חיוב עבר"
-                : <>ביטול ללא חיוב עד <strong>{formatDeadline(it.cancel_deadline)}</strong></>}
-            </p>
-          )}
-          <div className="btn-row">
-            <button type="button" className="btn btn--secondary" onClick={onCancel}>
-              {mine === "waitlist" ? "יציאה מרשימת ההמתנה" : "ביטול הרשמה"}
-              <span className="visually-hidden"> ל{it.title}</span>
+        {!cancelled && !offer && (mine === "booked" || mine === "waitlist") && (
+          <div className="slot-actions">
+            {mine === "booked" && (
+              <span className="slot-note">
+                {deadlinePassed(it) ? "מועד הביטול ללא חיוב עבר" : <>ביטול ללא חיוב עד {formatDeadline(it.cancel_deadline)}</>}
+              </span>
+            )}
+            <button type="button" className="text-btn" onClick={onCancel}>
+              {mine === "waitlist" ? "יציאה מהרשימה" : "ביטול"}
+              <span className="visually-hidden"> של {it.title}</span>
             </button>
           </div>
-        </>
-      )}
+        )}
 
-      {!cancelled && !mine && (
-        <div className="btn-row">
-          <button type="button" className="btn btn--primary" onClick={() => onBook("studio")}>
-            {left > 0 ? "הרשמה" : "לרשימת ההמתנה"}
-            <span className="visually-hidden"> ל{it.title} {formatTime(it.starts_at)}</span>
-          </button>
-          {it.zoom_enabled && (
-            <button type="button" className="btn btn--secondary" onClick={() => onBook("zoom")}>
-              הרשמה בזום
+        {!cancelled && !mine && (
+          <div className="slot-actions">
+            <button type="button" className={`btn btn--sm ${isFull(it) ? "btn--secondary" : "btn--primary"}`} onClick={() => onBook("studio")}>
+              {isFull(it) ? "לרשימת ההמתנה" : "הרשמה"}
               <span className="visually-hidden"> ל{it.title} {formatTime(it.starts_at)}</span>
             </button>
-          )}
-        </div>
-      )}
+            {it.zoom_enabled && (
+              <button type="button" className="btn btn--sm btn--ghost" onClick={() => onBook("zoom")}>
+                בזום
+                <span className="visually-hidden"> ל{it.title} {formatTime(it.starts_at)}</span>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </article>
   );
 }

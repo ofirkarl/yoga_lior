@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type ReactElement } from "react";
 import { api, type Session } from "./lib/api";
 import { errorMessage } from "./lib/errors";
 import { registerServiceWorker } from "./lib/push";
+import { balanceText, summarize, type Balance } from "./lib/balance";
 import type { Profile } from "./lib/types";
 import { AskProvider, CalendarIcon, GaugeIcon, ListIcon, Loading, PeopleIcon, TicketIcon, ToastProvider } from "./components/ui";
 import { Login } from "./screens/Login";
@@ -92,6 +93,14 @@ function initialTab(): Tab {
 function Main({ profile, onProfileSaved }: { profile: Profile; onProfileSaved: () => void }) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [balance, setBalance] = useState<Balance | null>(null);
+  const bump = () => setRefreshKey((k) => k + 1);
+
+  // כמה כניסות נשארו: מוצג בראש כל מסך ועל הלשונית
+  useEffect(() => {
+    api.getMyEntitlements().then((e) => setBalance(summarize(e))).catch(() => {});
+  }, [refreshKey]);
+  const chip = balance && <BalanceChip balance={balance} onOpen={() => setTab("card")} />;
 
   useEffect(() => {
     const t = TABS.find((x) => x.id === tab)!;
@@ -101,16 +110,22 @@ function Main({ profile, onProfileSaved }: { profile: Profile; onProfileSaved: (
 
   return (
     <>
-      {tab === "schedule" && <Schedule onChanged={() => setRefreshKey((k) => k + 1)} />}
-      {tab === "mine" && <MyClasses refreshKey={refreshKey} />}
-      {tab === "card" && <MyCard profile={profile} refreshKey={refreshKey} onProfileSaved={onProfileSaved} />}
+      {tab === "schedule" && <Schedule onChanged={bump} balance={chip} />}
+      {tab === "mine" && <MyClasses refreshKey={refreshKey} onChanged={bump} balance={chip} />}
+      {tab === "card" && <MyCard profile={profile} refreshKey={refreshKey} onProfileSaved={onProfileSaved} onChanged={bump} />}
       <nav className="tabbar" aria-label="ניווט ראשי">
         <ul>
           {TABS.map(({ id, label, Icon }) => (
             <li key={id}>
               <button type="button" aria-current={tab === id ? "page" : undefined} onClick={() => setTab(id)}>
-                <Icon />
+                <span className="tab-icon">
+                  <Icon />
+                  {id === "card" && balance && balance.entries !== null && (
+                    <span className={`tab-count${balance.entries === 0 ? " is-empty" : ""}`} aria-hidden="true">{balance.entries}</span>
+                  )}
+                </span>
                 {label}
+                {id === "card" && balance && <span className="visually-hidden">, {balanceText(balance)}</span>}
               </button>
             </li>
           ))}
@@ -122,7 +137,7 @@ function Main({ profile, onProfileSaved }: { profile: Profile; onProfileSaved: (
 
 const ADMIN_TABS: { id: AdminTab; label: string; Icon: () => ReactElement }[] = [
   { id: "room", label: "חדר בקרה", Icon: GaugeIcon },
-  { id: "members", label: "מתאמנות", Icon: PeopleIcon },
+  { id: "members", label: "מתאמנים", Icon: PeopleIcon },
   { id: "classes", label: "שיעורים", Icon: CalendarIcon },
 ];
 
@@ -164,5 +179,19 @@ function AdminMain({ profile }: { profile: Profile }) {
         </ul>
       </nav>
     </>
+  );
+}
+
+const shortDate = new Intl.DateTimeFormat("he-IL", { day: "numeric", month: "numeric", timeZone: "UTC" });
+
+/** שורת יתרה קטנה בראש המסך. לחיצה פותחת את הכרטיסייה. */
+function BalanceChip({ balance, onOpen }: { balance: Balance; onOpen: () => void }) {
+  const empty = balance.entries === 0;
+  return (
+    <button type="button" className={`balance-chip${empty ? " is-empty" : ""}`} onClick={onOpen}>
+      <span className="balance-n">{balanceText(balance)}</span>
+      {balance.validUntil && <span className="balance-until">עד {shortDate.format(new Date(`${balance.validUntil}T12:00:00Z`))}</span>}
+      <span className="visually-hidden">. מעבר לכרטיסייה</span>
+    </button>
   );
 }

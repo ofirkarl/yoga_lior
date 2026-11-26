@@ -22,7 +22,7 @@ export function OfferBox(props: {
     setBusy(true);
     try {
       await api.acceptOffer(props.bookingId);
-      toast(`נרשמת ל${props.title}. תנוכה כניסה אחת מהכרטיסייה.`);
+      toast(`ההרשמה ל${props.title} נקלטה.`);
       props.onDone();
     } catch (e) {
       toast(errorMessage(e));
@@ -34,15 +34,15 @@ export function OfferBox(props: {
 
   async function decline() {
     const ok = await ask({
-      title: "לוותר על המקום?",
-      message: "תצאי מרשימת ההמתנה, והמקום יעבור לבאה בתור.",
+      title: "ויתור על המקום",
+      message: "היציאה מרשימת ההמתנה תעביר את המקום לבא בתור.",
       confirm: "ויתור",
     });
     if (!ok) return;
     setBusy(true);
     try {
       await api.declineOffer(props.bookingId);
-      toast("ויתרת על המקום. תודה שעדכנת.");
+      toast("המקום הועבר לבא בתור. תודה על העדכון.");
       props.onDone();
     } catch (e) {
       toast(errorMessage(e));
@@ -56,11 +56,11 @@ export function OfferBox(props: {
       <p className="offer-title">{props.open ? "התפנה מקום בשיעור" : "התפנה לך מקום"}</p>
       <p style={{ margin: 0 }}>
         {props.open
-          ? "ההודעה נשלחה לכל מי שברשימה. הראשונה שמאשרת מקבלת את המקום."
+          ? "ההודעה נשלחה לכל הרשימה. המקום יינתן לפי סדר האישור."
           : <>המקום שמור לך עד <strong>{formatDeadline(props.expiresAt)}</strong>. אחר כך הוא עובר לבאה בתור.</>}
       </p>
       {late && (
-        <p className="offer-note">מועד הביטול ללא חיוב כבר עבר, כך שאחרי ההרשמה הכניסה תנוכה גם אם תבטלי.</p>
+        <p className="offer-note">מועד הביטול ללא חיוב כבר עבר, כך שהכניסה תנוצל גם במקרה של ביטול.</p>
       )}
       <div className="btn-row">
         <button type="button" className="btn btn--primary" onClick={accept} disabled={busy}>
