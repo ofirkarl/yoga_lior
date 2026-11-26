@@ -88,8 +88,8 @@ export const api = {
     ) as ScheduleItem[];
   },
 
-  async bookClass(sessionId: string, mode: AttendMode): Promise<{ status: string }> {
-    return must(await supabase.rpc("book_class", { p_session: sessionId, p_mode: mode })) as { status: string };
+  async bookClass(sessionId: string, mode: AttendMode, autoEnroll = false): Promise<{ status: string }> {
+    return must(await supabase.rpc("book_class", { p_session: sessionId, p_mode: mode, p_auto_enroll: autoEnroll })) as { status: string };
   },
 
   async cancelBooking(bookingId: string): Promise<{ new_status: string; refunded: boolean }> {

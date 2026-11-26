@@ -101,7 +101,7 @@ export const api = {
     await wait();
     return sessions.filter((s) => new Date(s.starts_at) >= from && new Date(s.starts_at) < to).map((s) => ({ ...s }));
   },
-  async bookClass(id: string, mode: AttendMode) {
+  async bookClass(id: string, mode: AttendMode, _auto = false) {
     await wait();
     const s = sessions.find((x) => x.session_id === id)!;
     const full = mode === "studio" && s.booked_studio >= s.max_participants;

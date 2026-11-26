@@ -40,6 +40,7 @@ export function Schedule({ onChanged }: { onChanged?: () => void }) {
   const [pending, setPending] = useState<Pending | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [autoEnroll, setAutoEnroll] = useState(false);
 
   const range = useMemo(() => {
     const from = weekStart(week);
@@ -77,10 +78,12 @@ export function Schedule({ onChanged }: { onChanged?: () => void }) {
     setActionError(null);
     try {
       if (pending.action === "book") {
-        const res = await api.bookClass(pending.item.session_id, pending.mode);
+        const res = await api.bookClass(pending.item.session_id, pending.mode, autoEnroll);
         toast(
           res.status === "waitlist"
-            ? "ההרשמה נוספה לרשימת ההמתנה. אם יתפנה מקום, היא תעבור אוטומטית ותישלח הודעה."
+            ? autoEnroll
+              ? "ההרשמה נוספה לרשימת ההמתנה. אם יתפנה מקום, היא תעבור אוטומטית."
+              : "ההרשמה נוספה לרשימת ההמתנה. אם יתפנה מקום, תישלח הודעה לפי התור."
             : `ההרשמה ל${pending.item.title} נקלטה. אפשר לבטל ללא חיוב עד ${formatDeadline(pending.item.cancel_deadline)}.`,
         );
       } else {
@@ -136,7 +139,7 @@ export function Schedule({ onChanged }: { onChanged?: () => void }) {
               <ClassCard
                 key={it.session_id}
                 item={it}
-                onBook={(mode) => { setActionError(null); setPending({ item: it, action: "book", mode }); }}
+                onBook={(mode) => { setActionError(null); setAutoEnroll(false); setPending({ item: it, action: "book", mode }); }}
                 onCancel={() => { setActionError(null); setPending({ item: it, action: "cancel" }); }}
               />
             ))}
@@ -154,6 +157,17 @@ export function Schedule({ onChanged }: { onChanged?: () => void }) {
         }
       >
         {pending && <ConfirmBody pending={pending} />}
+        {pending?.action === "book" && pending.mode === "studio" && isFull(pending.item) && (
+          <label className="checkbox-line" style={{ marginTop: ".5rem" }}>
+            <input type="checkbox" checked={autoEnroll} onChange={(e) => setAutoEnroll(e.target.checked)} />
+            <span>
+              להכניס אותי אוטומטית כשמתפנה מקום.
+              <span className="row-sub" style={{ display: "block" }}>
+                תנוכה כניסה מהכרטיסייה, גם אם המקום מתפנה אחרי מועד הביטול ללא חיוב.
+              </span>
+            </span>
+          </label>
+        )}
         {actionError && <p className="notice notice--error" role="alert">{actionError}</p>}
         <div className="btn-row">
           <button
@@ -204,7 +218,7 @@ function ConfirmBody({ pending }: { pending: Pending }) {
       </p>
       {waitlist ? (
         <p className="notice notice--info">
-          השיעור מלא. כשיתפנה מקום ההרשמה תעבור אוטומטית, תנוכה כניסה אחת ותישלח הודעה.
+          השיעור מלא. כשיתפנה מקום, הראשונה בתור תקבל הודעה ושעה להירשם, ואחריה הבאה בתור.
         </p>
       ) : (
         <p className="notice notice--info">

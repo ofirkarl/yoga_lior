@@ -135,7 +135,7 @@ reset role;
 set role authenticated;
 select t.as_user('00000000-0000-0000-0000-0000000000a2');
 select submit_health_declaration('{"q1": false}', 'מיכל לוי');
-select t.ok((select status from book_class((select id from class_sessions where title = 'רמה 1'))) = 'waitlist', 'שיעור מלא: נכנסים לרשימת המתנה');
+select t.ok((select status from book_class((select id from class_sessions where title = 'רמה 1'), 'studio', true)) = 'waitlist', 'שיעור מלא: נכנסים לרשימת המתנה');
 select t.ok((select entries_left from entitlements) = 5, 'רשימת המתנה לא מורידה ניקוב');
 select t.ok((select count(*) from bookings) = 1, 'מתאמנת רואה רק את ההרשמות שלה');
 reset role;
@@ -150,10 +150,30 @@ reset role;
 
 set role authenticated;
 select t.as_user('00000000-0000-0000-0000-0000000000a2');
-select t.ok((select status from bookings) = 'booked', 'הראשונה ברשימת ההמתנה עלתה אוטומטית');
+select t.ok((select status from bookings) = 'booked', 'מי שסימנה כניסה אוטומטית עלתה מרשימת ההמתנה');
 select t.ok((select entries_left from entitlements) = 4, 'ומהכרטיסייה שלה ירד ניקוב');
 select t.fails('select cancel_booking((select id from bookings b where b.user_id <> auth.uid() limit 1))', 'not_allowed',
                'אי אפשר לבטל הרשמה של מישהי אחרת');
+reset role;
+
+-- ===== בלי סימון: לא נכנסים אוטומטית, והמקום נשאר פתוח =====
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-0000000000d1');
+select t.ok((select status from book_class((select id from class_sessions where title = 'רמה 1'))) = 'waitlist', 'דנה ברשימת המתנה, בלי כניסה אוטומטית');
+reset role;
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-0000000000a2');
+select cancel_booking((select id from bookings where status = 'booked'));
+reset role;
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-0000000000d1');
+select t.ok((select status from bookings where session_id = (select id from class_sessions where title = 'רמה 1') and status in ('booked', 'waitlist')) = 'waitlist',
+            'בלי סימון: לא נכנסים אוטומטית');
+select cancel_booking((select id from bookings where status = 'waitlist'));
+reset role;
+set role authenticated;
+select t.as_user('00000000-0000-0000-0000-0000000000a2');
+select t.ok((select status from book_class((select id from class_sessions where title = 'רמה 1'))) = 'booked', 'המקום שהתפנה פתוח להרשמה רגילה');
 reset role;
 
 -- ===== ביטול מאוחר: לא מחזיר ניקוב =====
