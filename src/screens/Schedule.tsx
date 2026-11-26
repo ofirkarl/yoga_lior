@@ -25,7 +25,6 @@ function greeting(): string {
   return h < 5 ? "לילה טוב" : h < 12 ? "בוקר טוב" : h < 17 ? "צהריים טובים" : h < 21 ? "ערב טוב" : "לילה טוב";
 }
 const todayLine = new Intl.DateTimeFormat("he-IL", { timeZone: "Asia/Jerusalem", weekday: "long", day: "numeric", month: "long" });
-const shortDay = new Intl.DateTimeFormat("he-IL", { timeZone: "Asia/Jerusalem", weekday: "long" });
 
 export function Schedule({ onChanged, balance, name }: { onChanged?: () => void; balance?: ReactNode; name?: string }) {
   const toast = useToast();
@@ -65,17 +64,11 @@ export function Schedule({ onChanged, balance, name }: { onChanged?: () => void;
 
   const visibleDays = days.filter((k) => byDay.has(k));
   const current = sel && byDay.has(sel) ? sel : visibleDays[0] ?? null;
-  const later = (items ?? []).filter((it) => current !== null && dayKey(it.starts_at) > current && it.status !== "cancelled").slice(0, 4);
 
   useEffect(() => {
     if (!current) return;
     stripRef.current?.querySelector<HTMLElement>(`[data-strip="${current}"]`)?.scrollIntoView({ block: "nearest", inline: "center" });
   }, [current]);
-
-  function openDay(k: string) {
-    setSel(k);
-    window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-  }
 
   async function confirm() {
     if (!pending) return;
@@ -169,27 +162,6 @@ export function Schedule({ onChanged, balance, name }: { onChanged?: () => void;
               onChanged={() => { load(); onChanged?.(); }}
             />
           ))}
-
-          {later.length > 0 && (
-            <section aria-labelledby="later" className="later">
-              <h2 id="later" className="later-title">אחר כך</h2>
-              <ul className="later-list">
-                {later.map((it) => (
-                  <li key={it.session_id}>
-                    <span className="later-time">{formatTime(it.starts_at)}</span>
-                    <span className="later-text">
-                      <span className="later-name">{it.title} <span className="later-day">{shortDay.format(new Date(it.starts_at))}</span></span>
-                      <MiniMats it={it} />
-                    </span>
-                    <button type="button" className={`btn btn--sm ${it.my_status === "booked" ? "btn--ghost" : "btn--primary"}`} onClick={() => openDay(dayKey(it.starts_at))}>
-                      {it.my_status === "booked" ? "שלך" : "לחדר"}
-                      <span className="visually-hidden">: {it.title}, {formatDay(it.starts_at)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
         </>
       )}
 
@@ -281,21 +253,7 @@ function ConfirmBody({ pending }: { pending: Pending }) {
   );
 }
 
-/** שורת מזרנים קטנה: תפוסה במבט אחד */
-function MiniMats({ it }: { it: ScheduleItem }) {
-  const max = it.max_participants;
-  const used = Math.min(taken(it), max);
-  const mine = it.my_status === "booked" && it.my_mode === "studio";
-  return (
-    <span className="mini-mats" role="img" aria-label={used >= max ? `מלא, ${max} מתוך ${max}` : `${used} מתוך ${max} מזרנים תפוסים`}>
-      {Array.from({ length: Math.min(max, 16) }, (_, i) => (
-        <span key={i} className={`mini-mat${i < used ? (mine && i === used - 1 ? " is-mine" : " is-taken") : ""}`} />
-      ))}
-    </span>
-  );
-}
-
-/** שיעור אחד: השעה, והחדר עם המזרנים. נוגעים במזרן פנוי כדי להירשם. */
+/** שיעור אחד: השעה והמזרנים. נוגעים במזרן פנוי כדי להירשם. */
 function RoomCard({ item: it, onBook, onCancel, onChanged }: {
   item: ScheduleItem; onBook: (m: AttendMode) => void; onCancel: () => void; onChanged: () => void;
 }) {
@@ -326,7 +284,7 @@ function RoomCard({ item: it, onBook, onCancel, onChanged }: {
       </div>
 
       {!cancelled && (
-        <div className="room" role="group" aria-label={`החדר: ${max} מזרנים, ${used} תפוסים`}>
+        <div className="room" role="group" aria-label={`${max} מזרנים, ${used} תפוסים`}>
           {Array.from({ length: max }, (_, i) => {
             if (i < others) return <span key={i} className="mat is-taken" aria-hidden="true" />;
             if (mineStudio && i === others) return <span key={i} className="mat is-mine">שלך</span>;

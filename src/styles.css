@@ -11,9 +11,9 @@
   --muted: #6b6158;         /* 5.3:1 על הרקע */
   --faint: #b9ada0;         /* צורות בלבד */
   --line: rgb(38 32 28 / .1);
-  --mat-free: #f6d7b4;      /* מזרן פנוי */
+  --mat-free: #fffdfa;      /* מזרן פנוי: בהיר, על רצפת החדר */
   --mat-taken: #a99a8c;     /* מזרן תפוס */
-  --mat-mine: #26201c;      /* המזרן שלך */
+  --mat-mine: #f2a65a;      /* המזרן שלך: ענבר */
   --accent: #f2a65a;        /* ענבר: פעולה ראשית, טקסט כהה מעליו 8.6:1 */
   --accent-hover: #eb9843;
   --accent-ink: #8a4f0d;    /* ענבר כטקסט על בהיר: 5.6:1 */
@@ -550,9 +550,9 @@ strong, b { font-weight: 500; }
 .mat { height: 76px; border-radius: 8px; border: 0; padding: 0; display: flex; align-items: center; justify-content: center; font: inherit; font-size: var(--t-sec); font-weight: 500; }
 .mat.is-taken { background: var(--mat-taken); }
 .mat.is-free { background: var(--mat-free); }
-.mat.is-mine { background: var(--mat-mine); color: var(--surface); }
+.mat.is-mine { background: var(--mat-mine); color: var(--ink); }
 button.mat { cursor: pointer; transition: transform .12s ease, background-color .12s ease; }
-button.mat:hover { background: var(--accent); }
+button.mat:hover { background: #fbe6cc; }
 button.mat:active { transform: scale(.95); }
 
 .room-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; min-height: 48px; }
@@ -595,7 +595,7 @@ button.mat:active { transform: scale(.95); }
 .tag::before { content: ""; width: 5px; height: 12px; border-radius: 1.5px; background: currentColor; flex: none; }
 .tag--mine { background: none; color: var(--ink); }
 .tag--quiet { background: none; color: var(--muted); }
-.tag--quiet::before { background: var(--mat-free); }
+.tag--quiet::before { background: var(--faint); }
 .tag--attention { background: none; color: var(--accent-ink); }
 .tag--attention::before { background: var(--accent); }
 .tag--muted { background: none; color: var(--muted); }
@@ -631,7 +631,7 @@ button.mat:active { transform: scale(.95); }
 .order-pending { box-shadow: var(--shadow), inset 0 0 0 1.5px var(--accent); }
 .order-steps { list-style: none; display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0 0; padding: 0; font-size: var(--t-meta); color: var(--muted); }
 .order-steps li { display: inline-flex; align-items: center; gap: 6px; }
-.order-steps li::before { content: ""; width: 5px; height: 12px; border-radius: 1.5px; background: var(--mat-free); }
+.order-steps li::before { content: ""; width: 5px; height: 12px; border-radius: 1.5px; background: var(--faint); }
 .order-steps li.is-done::before { background: var(--mat-taken); }
 .order-steps li.is-now { color: var(--accent-ink); font-weight: 500; }
 .order-steps li.is-now::before { background: var(--accent); }
@@ -686,8 +686,8 @@ dialog.sheet::backdrop { background: rgb(38 32 28 / .4); }
 .status-list > li { display: grid; grid-template-columns: 6px minmax(0, 1fr); column-gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .status-list > li:last-child { border-bottom: 0; padding-bottom: 0; }
 .status-list > li:first-child { padding-top: 0; }
-.status-mark { width: 6px; height: 16px; border-radius: 2px; margin-top: 4px; background: var(--mat-free); }
-.status-mark.is-done { background: var(--mat-mine); }
+.status-mark { width: 6px; height: 16px; border-radius: 2px; margin-top: 4px; background: var(--faint); }
+.status-mark.is-done { background: var(--ink); }
 .status-mark.is-wait { background: var(--accent); }
 .status-name { font-weight: 500; margin: 0; }
 .status-detail { margin: 0; color: var(--muted); font-size: var(--t-sec); }
