@@ -1,5 +1,6 @@
 // התראות Push במכשיר הנוכחי: בדיקת תמיכה, הפעלה וכיבוי.
 import { api } from "../lib/api";
+import { isIos, isStandalone } from "./platform";
 
 /** המפתח הציבורי של השרת (VAPID). ציבורי מעצם הגדרתו, הפרטי שמור ב-Vault בלבד. */
 const VAPID_PUBLIC_KEY = "BE_-YB6iSDVXIYc80ihP56pvRdjDZxlk0ffpTCEToy1pc2JDsbavRUhhrUWHq9Vz97S9e3ll0uMiXkin5fDh4wI";
@@ -10,16 +11,6 @@ export type PushState =
   | "denied" // ההרשאה נחסמה בהגדרות
   | "off"
   | "on";
-
-function isIos(): boolean {
-  const ua = navigator.userAgent;
-  return /iPad|iPhone|iPod/.test(ua) || (ua.includes("Macintosh") && navigator.maxTouchPoints > 1);
-}
-
-function isStandalone(): boolean {
-  return window.matchMedia("(display-mode: standalone)").matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true;
-}
 
 function supported(): boolean {
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;

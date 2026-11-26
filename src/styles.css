@@ -292,3 +292,13 @@ button.kpi:hover { border-color: var(--primary); }
 .roster .btn-row { flex-wrap: nowrap; }
 .roster .btn-row > .btn { flex: 0 0 auto; }
 .btn--ghost[aria-pressed="true"] { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); font-weight: 700; }
+
+/* הדרכת התקנה למסך הבית */
+.link-btn { background: none; border: 0; color: var(--primary); font: inherit; font-weight: 600; cursor: pointer; min-height: 44px; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+.install-card { border-color: var(--primary); background: var(--primary-soft); margin-bottom: 1.5rem; }
+.install-card h2 { margin: 0 0 .4rem; font-size: 1.15rem; }
+.install-card p { margin: 0 0 .75rem; }
+.install-steps { margin: 0 0 .75rem; padding-inline-start: 1.4rem; }
+.install-steps li { margin-bottom: .6rem; line-height: 1.6; }
+.install-note { display: block; color: var(--muted); font-size: .95rem; margin-top: .25rem; }
+.glyph { width: 1.35em; height: 1.35em; vertical-align: -0.3em; color: #0a6cff; margin-inline: .1em; }

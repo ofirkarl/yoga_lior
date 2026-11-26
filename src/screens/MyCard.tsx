@@ -3,6 +3,7 @@ import { api } from "../lib/api";
 import { errorMessage } from "../lib/errors";
 import { dayKey, formatDate } from "../lib/format";
 import type { Entitlement, Profile } from "../lib/types";
+import { InstallHelpButton } from "../components/InstallGuide";
 import { Field, Loading, useToast } from "../components/ui";
 
 export function MyCard({ profile, refreshKey, onProfileSaved }: { profile: Profile; refreshKey: number; onProfileSaved: () => void }) {
@@ -91,6 +92,10 @@ export function MyCard({ profile, refreshKey, onProfileSaved }: { profile: Profi
           {saving ? "בשמירה…" : "שמירת הפרטים"}
         </button>
       </form>
+
+      <div style={{ marginBottom: "1rem" }}>
+        <InstallHelpButton />
+      </div>
 
       <button type="button" className="btn btn--ghost btn--block" onClick={() => api.signOut()}>
         יציאה מהחשבון

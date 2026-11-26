@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { api } from "../lib/api";
 import { errorMessage } from "../lib/errors";
 import { Field, GoogleIcon, PasswordInput } from "../components/ui";
+import { InstallCard } from "../components/InstallGuide";
 
 export function Login() {
   const [username, setUsername] = useState("");
@@ -39,6 +40,8 @@ export function Login() {
         <img src="/icon.svg" alt="" />
         <p className="brand-name">יוגה עם ליאור</p>
       </div>
+
+      <InstallCard />
 
       <h1>כניסה</h1>
       <p>כאן נרשמים לשיעורים ורואים כמה כניסות נשארו בכרטיסייה.</p>

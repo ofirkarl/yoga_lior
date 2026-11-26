@@ -3,6 +3,7 @@ import { api } from "../lib/api";
 import { errorMessage } from "../lib/errors";
 import { disablePush, enablePush, getPushState, type PushState } from "../lib/push";
 import { useToast } from "../components/ui";
+import { InstallHelpButton } from "../components/InstallGuide";
 
 /** כרטיס בחדר הבקרה: הפעלת התראות לטלפון על הרשמות חדשות */
 export function PushCard() {
@@ -79,12 +80,8 @@ export function PushCard() {
         )}
         {state === "needs-install" && (
           <>
-            <p style={{ margin: 0 }}>באייפון, התראות עובדות רק כשהאפליקציה מותקנת במסך הבית:</p>
-            <ol style={{ margin: 0, paddingInlineStart: "1.25rem" }}>
-              <li>לחצי על כפתור השיתוף בספארי (ריבוע עם חץ למעלה).</li>
-              <li>בחרי "הוספה למסך הבית".</li>
-              <li>פתחי את האפליקציה מהאייקון החדש וחזרי לכאן.</li>
-            </ol>
+            <p style={{ margin: 0 }}>באייפון, התראות עובדות רק כשהאפליקציה פתוחה מהאייקון במסך הבית.</p>
+            <InstallHelpButton label="איך מוסיפים למסך הבית" />
           </>
         )}
         {state === "denied" && (
